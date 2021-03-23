@@ -10,4 +10,5 @@ AlwaysBreakBeforeMultilineStrings: true
 AlwaysBreakTemplateDeclarations: true
 IndentWidth: 4
 ColumnLimit: 100
+
 ...
