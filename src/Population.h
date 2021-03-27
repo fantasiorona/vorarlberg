@@ -57,6 +57,14 @@ class Population {
         std::cout << "  Best fitness = " << current_best_genotype.fitness << "\n";
     }
 
+    int GetVariableCount() const {
+        return variable_count;
+    }
+
+    Genotype<T> GetBestGenotype() const {
+        return current_best_genotype;
+    }
+
   private:
     std::vector<Genotype<T>> genotypes;
     std::vector<Genotype<T>> new_genotypes;
@@ -134,9 +142,12 @@ class Population {
     // Return a random possible gene value at the given index, taking the lower and upper bounds
     // into account
     T get_random_gene_value(unsigned int index) {
-        return get_random_normalized_double() *
-                   (upper_gene_bound[index] - lower_gene_bound[index]) +
-               lower_gene_bound[index];
+        // using round because otherwise upperbound will only be returned when we get exactly 1.0
+        // with get_random_normalized_double() when using int
+        // TODO: does this work with doubles?
+        return round(get_random_normalized_double() *
+                         (upper_gene_bound[index] - lower_gene_bound[index]) +
+                     lower_gene_bound[index]);
     }
 
     /// Iterates through the population and crosses over randomly selected pairs.
