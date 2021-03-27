@@ -12,26 +12,6 @@
 template <class T>
 class Population {
   public:
-    std::vector<Genotype<T>> genotypes;
-    std::vector<Genotype<T>> new_genotypes;
-    Genotype<T> current_best_genotype;
-
-    /// Upper and lower bounds for the gene variables
-    std::vector<T> upper_gene_bound;
-    std::vector<T> lower_gene_bound;
-
-    unsigned int variable_count;
-    unsigned int max_generations;
-    unsigned int size;
-
-    double crossover_probability;
-    double mutation_probability;
-
-    std::random_device random_device;
-    std::mt19937 mersenne_twister_engine;
-    std::uniform_real_distribution<double> random_normalized_double;
-    std::uniform_int_distribution<int> random_gene_index;
-
     Population(std::string filepath, unsigned int variable_count, unsigned int max_generations,
                unsigned int size, double crossover_probability, double mutation_probability)
         : variable_count(variable_count), max_generations(max_generations), size(size),
@@ -47,6 +27,64 @@ class Population {
         initialize_genotypes();
     }
 
+    // Evolve all generations and print intermediate results
+    void evolve(std::function<double(std::vector<T>)> evaluation_function) {
+        // Initial evaluation (this is called within the generation functions later)
+        evaluate_all_fitnesses(evaluation_function);
+        remember_best_genotype();
+
+        for (int generation = 0; generation < max_generations; generation++) {
+            create_new_population();
+            crossover_population();
+            mutate_population();
+            report(generation);
+            evaluate_all_fitnesses(evaluation_function);
+            elitist();
+        }
+    }
+
+    // Print the best variable values and the corresponding fitness
+    void print_result() const {
+        std::cout << "\n";
+        std::cout << "  Best member:\n";
+        std::cout << "\n";
+
+        for (int i = 0; i < variable_count; i++) {
+            std::cout << "  var(" << i << ") = " << current_best_genotype.genes[i] << "\n";
+        }
+
+        std::cout << "\n";
+        std::cout << "  Best fitness = " << current_best_genotype.fitness << "\n";
+    }
+
+  private:
+    std::vector<Genotype<T>> genotypes;
+    std::vector<Genotype<T>> new_genotypes;
+    Genotype<T> current_best_genotype;
+
+    /// Upper and lower bounds for the gene variables
+    std::vector<T> upper_gene_bound;
+    std::vector<T> lower_gene_bound;
+
+    const unsigned int variable_count;
+    const unsigned int max_generations;
+    const unsigned int size;
+
+    // Probabilities
+    const double crossover_probability;
+    const double mutation_probability;
+
+    // Random number generators
+    std::random_device random_device;
+    std::mt19937 mersenne_twister_engine;
+    std::uniform_real_distribution<double> random_normalized_double;
+    std::uniform_int_distribution<int> random_gene_index;
+
+    // Parse a file with the format:
+    // [lower bound 1] [upper bound 1]
+    // [lower bound 2] [upper bound 2]
+    // ...
+    // for all variable_count variables.
     void parse_bounds_file(std::string filepath) {
         std::ifstream input;
         input.open(filepath);
@@ -58,8 +96,8 @@ class Population {
 
         // Parse and set bounds
         for (int i = 0; i < variable_count; i++) {
-            double lower_bound;
-            double upper_bound;
+            T lower_bound;
+            T upper_bound;
 
             input >> lower_bound >> upper_bound;
 
@@ -70,6 +108,7 @@ class Population {
         input.close();
     }
 
+    // Initialize Genotype genes to random values
     void initialize_genotypes() {
         for (Genotype<T> &genotype : genotypes) {
             genotype.set_variable_count(variable_count);
@@ -81,19 +120,23 @@ class Population {
         }
     }
 
+    // Return a random double between 0.0 and 1.0
     double get_random_normalized_double() {
         return random_normalized_double(mersenne_twister_engine);
     }
 
-    int get_random_gene_index() {
+    // Return a random int between 0 and the number of variables minus one, to be used as an index
+    // for gene arrays
+    unsigned int get_random_gene_index() {
         return random_gene_index(mersenne_twister_engine);
     }
 
-    int get_random_gene_value(unsigned int index) {
-        std::uniform_int_distribution<int> random_gene_value(lower_gene_bound[index],
-                                                             upper_gene_bound[index]);
-
-        return random_gene_value(mersenne_twister_engine);
+    // Return a random possible gene value at the given index, taking the lower and upper bounds
+    // into account
+    T get_random_gene_value(unsigned int index) {
+        return get_random_normalized_double() *
+                   (upper_gene_bound[index] - lower_gene_bound[index]) +
+               lower_gene_bound[index];
     }
 
     /// Iterates through the population and crosses over randomly selected pairs.
@@ -180,15 +223,11 @@ class Population {
         }
     }
 
-    void initialize(std::string filename, int &seed) {
-        // TODO: Implement
-    }
-
     /// Returns the genotype with the highest fitness.
     void remember_best_genotype() {
         for (Genotype<T> &genotype : genotypes) {
             if (genotype.fitness > current_best_genotype.fitness) {
-                // TODO: We might want to avoid the overhead of copying all the time
+                // TODO: We might want to avoid the overhead of copying all the time?
                 current_best_genotype = genotype;
             }
         }
@@ -208,32 +247,6 @@ class Population {
                 }
             }
         }
-    }
-
-    // Print some metrics to the console.
-    void report(int generation) {
-        if (generation == 0) {
-            std::cout << "\n";
-            std::cout << "  Generation       Best            Average       Standard \n";
-            std::cout << "  number           value           fitness       deviation \n";
-            std::cout << "\n";
-        }
-
-        double sum = 0.0;
-        double sum_square = 0.0;
-
-        for (int i = 0; i < size; i++) {
-            sum = sum + genotypes[i].fitness;
-            sum_square = sum_square + genotypes[i].fitness * genotypes[i].fitness;
-        }
-
-        double avg = sum / (double)size;
-        double square_sum = avg * avg * size;
-        double stddev = sqrt((sum_square - square_sum) / (size - 1));
-        double best_val = current_best_genotype.fitness;
-
-        std::cout << "  " << std::setw(8) << generation << "  " << std::setw(14) << best_val << "  "
-                  << std::setw(14) << avg << "  " << std::setw(14) << stddev << "\n";
     }
 
     // Selector function which generates a new population by keeping random good members of the
@@ -282,36 +295,29 @@ class Population {
         }
     }
 
-    void evolve(std::function<double(std::vector<T>)> evaluation_function) {
-        // Initial evaluation (this is called within the generation functions later)
-        evaluate_all_fitnesses(evaluation_function);
-        remember_best_genotype();
-
-        for (int generation = 0; generation < max_generations; generation++) {
-            create_new_population();
-            crossover_population();
-            mutate_population();
-            report(generation);
-            evaluate_all_fitnesses(evaluation_function);
-            elitist();
+    // Print some metrics to the console.
+    void report(int generation) {
+        if (generation == 0) {
+            std::cout << "\n";
+            std::cout << "  Generation       Best            Average       Standard \n";
+            std::cout << "  number           value           fitness       deviation \n";
+            std::cout << "\n";
         }
 
-        // Report
-        std::cout << "\n";
-        std::cout << "  Best member after " << max_generations << " generations:\n";
-        std::cout << "\n";
+        double sum = 0.0;
+        double sum_square = 0.0;
 
-        for (int i = 0; i < variable_count; i++) {
-            std::cout << "  var(" << i << ") = " << current_best_genotype.genes[i] << "\n";
+        for (int i = 0; i < size; i++) {
+            sum = sum + genotypes[i].fitness;
+            sum_square = sum_square + genotypes[i].fitness * genotypes[i].fitness;
         }
 
-        std::cout << "\n";
-        std::cout << "  Best fitness = " << current_best_genotype.fitness << "\n";
+        double avg = sum / (double)size;
+        double square_sum = avg * avg * size;
+        double stddev = sqrt((sum_square - square_sum) / (size - 1));
+        double best_val = current_best_genotype.fitness;
 
-        // Done!
-        std::cout << "\n";
-        std::cout << "SIMPLE_GA:\n";
-        std::cout << "  Normal end of execution.\n";
-        std::cout << "\n";
+        std::cout << "  " << std::setw(8) << generation << "  " << std::setw(14) << best_val << "  "
+                  << std::setw(14) << avg << "  " << std::setw(14) << stddev << "\n";
     }
 };
