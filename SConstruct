@@ -4,4 +4,6 @@
 env = DefaultEnvironment(tools=['default', 'compilation_db'])
 env.CompilationDatabase()
 
+env.Append(CCFLAGS='-g')
+
 Program('ms.out', Glob('src/*.cpp'))
