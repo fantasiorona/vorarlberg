@@ -248,7 +248,7 @@ void mutate_genotype(std::vector<int> &genes, double mutationProbability) {
 }
 
 void print_magic_square(std::vector<int> values) {
-    std::cout << std::endl << "Semi Magic Square:" << std::endl << std::endl;
+    std::cout << std::endl << "Magic Square:" << std::endl << std::endl;
     int magicConstant = (dimension * dimension + 1) * dimension / 2;
     std::cout << "Magic constant should be: " << magicConstant << std::endl << std::endl;
     int correctSums = 0;
