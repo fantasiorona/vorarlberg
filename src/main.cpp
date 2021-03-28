@@ -14,7 +14,7 @@ int dimension = 0;
 // Create a new Population with genes consisting of three `double` variables
 // global because we use it the mutation function
 // yes this is spaghetti code
-Population<int> population("inputs\\normal_dimension_4.txt", 10000, 2500, 0.4, 0.8);
+Population<int> population("inputs\\normal_dimension_4.txt", 100, 2500, 0.4, 0.8);
 int main() {
 
     // Uncomment to create input files
@@ -33,7 +33,7 @@ int main() {
     }
 
     // Evolve the population to maximize the given equation
-    population.evolve(evaluate_for_pandiagonal_magic_square, mutate_genotype);
+    population.evolve(evaluate_for_semi_magic_square, mutate_genotype);
 
     // Print the result
     population.print_result();
@@ -41,50 +41,40 @@ int main() {
     print_magic_square(bestMember.genes);
 }
 
-double evaluate_for_semi_magic_square(std::vector<int> genes) {
-    // Find dimension of magic square based on the gene amount
-    int variableCount = genes.size();
+std::vector<int> calc_sums(const std::vector<int> &square, int dimension) {
 
-    // TODO: Is this really not needed anymore?
-    // If yes remove
-    // Not needed anymore because mutation function ensures that there are no duplicates
-    // checking that no duplicates are present in the genes, because that would make the magic
-    // square trivial
-    // from https://stackoverflow.com/a/32238115
-    /*
-    std::map<int, int> geneDuplicates;
-    for_each(genes.begin(), genes.end(), [&geneDuplicates](int val) { geneDuplicates[val]++; });
-    int fitness = variableCount;
-    // counting max duplicates
-    int geneMax = 0;
-    for (auto duplicate : geneDuplicates) {
-        int count = duplicate.second;
-        geneMax = geneMax < count ? count : geneMax;
-    }
-    // if there are duplicates we return them as negative value (= really bad fitness)
-    if (geneMax > 1) {
-        //+variableCount because we want to always be >=0
-        return variableCount - geneMax;
-    }*/
-
-    std::vector<int> sums;
-    // check rows
-    for (int row = 0; row < variableCount; row += dimension) {
-        int sum = 0.0;
-        // sum all values in the current row
+    int total_sum = 0;
+    std::vector<int> sums(dimension * 2);
+    for (int row = 0; row < dimension; ++row) {
         for (int col = 0; col < dimension; ++col) {
-            sum += genes[row + col];
+            int val = square[row * dimension + col];
+            sums[row] += val;
+            sums[dimension + col] += val;
+            total_sum += val;
         }
-        sums.push_back(sum);
     }
-    // check cols
-    for (int col = 0; col < dimension; ++col) {
-        int sum = 0.0;
-        for (int row = 0; row < variableCount; row += dimension) {
-            sum += genes[row + col];
+    return sums;
+}
+
+std::vector<int> calc_cross_diagonals(const std::vector<int> &square, int dimension) {
+
+    std::vector<int> sums(dimension * 2); // /
+
+    for (int diag = 0; diag < dimension; ++diag) {
+        for (int cell = 0; cell < dimension; ++cell) {
+            int idx = diag + cell * (dimension - 1);
+            if (diag + 1 <= cell) idx += dimension;
+            sums[diag] += square[idx];
+
+            idx = diag + cell * (dimension + 1);
+            if (diag + cell >= dimension) idx -= dimension;
+            sums[diag + dimension] += square[idx];
         }
-        sums.push_back(sum);
     }
+    return sums;
+}
+
+int count_correct_sums(const std::vector<int> &sums, int dimension) {
     // from:
     // https://www.dr-mikes-math-games-for-kids.com/magic-square-magic-number.html#:~:text=A%20magic%20square%20is%20a,number"%20of%20the%20magic%20square
     int magicConstant = (dimension * dimension + 1) * dimension / 2;
@@ -94,121 +84,25 @@ double evaluate_for_semi_magic_square(std::vector<int> genes) {
             ++correctSums;
         }
     }
-    //+variableCount to be conform with earlier return
-    // return correctSums + variableCount;
+    return correctSums;
+}
+
+double evaluate_for_semi_magic_square(std::vector<int> genes) {
+    std::vector<int> semiMagicSums = calc_sums(genes, dimension);
+    int correctSums = count_correct_sums(semiMagicSums, dimension);
     return correctSums;
 }
 
 double evaluate_for_pandiagonal_magic_square(std::vector<int> genes) {
 
-    // TODO: code duplication from evaluate_for_semi_magic_square
-    // Find dimension of magic square based on the gene amount
-    int variableCount = genes.size();
+    std::vector<int> semiMagicSums = calc_sums(genes, dimension);
 
-    // TODO: Is this really not needed anymore?
-    // If yes remove
-    // Not needed anymore because mutation function ensures that there are no duplicates
-    // checking that no duplicates are present in the genes, because that would make the magic
-    // square trivial
-    // from https://stackoverflow.com/a/32238115
-    /*std::map<int, int> geneDuplicates;
-    for_each(genes.begin(), genes.end(), [&geneDuplicates](int val) { geneDuplicates[val]++; });
-    int fitness = variableCount;
-    // counting max duplicates
-    int geneMax = 0;
-    for (auto duplicate : geneDuplicates) {
-        int count = duplicate.second;
-        geneMax = geneMax < count ? count : geneMax;
-    }
-    // if there are duplicates we return them as negative value (= really bad fitness)
-    if (geneMax > 1) {
-        //+variableCount because we want to always be >=0
-        return variableCount - geneMax;
-    }*/
+    std::vector<int> panDiagonalSums = calc_cross_diagonals(genes, dimension);
 
-    std::vector<int> sums;
-
-    // check rows
-    for (int row = 0; row < variableCount; row += dimension) {
-        int sum = 0.0;
-        // sum all values in the current row
-        for (int col = 0; col < dimension; ++col) {
-            sum += genes[row + col];
-        }
-        sums.push_back(sum);
-    }
-    // check cols
-    for (int col = 0; col < dimension; ++col) {
-        int sum = 0.0;
-        for (int row = 0; row < variableCount; row += dimension) {
-            sum += genes[row + col];
-        }
-        sums.push_back(sum);
-    }
-
-    // checking sums diagonally (left top -> right bottom)
-    // we iterate over each column because the first value for each diagonal sum is each value in
-    // the first row
-    for (int col = 0; col < dimension; ++col) {
-        int sum = 0;
-        // offset counts the amount we have to travel in the vector to get from the first value to
-        // the current one, thus starting at 0
-        int offset = 0;
-        for (int step = 0; step < dimension; ++step) {
-            sum += genes[col + offset];
-            // we check if we reach the edge of the square with the current step by comparing it to
-            // the current column
-            if (col == step) {
-                // if we reach the edge of the square we just move further by one index because the
-                // vector is onedimensional and thus we wrap around
-                offset += 1;
-            } else {
-                // otherwise we move by dimension + 1 to ensure we are one step farther to the right
-                // in the next row compared to the previous step
-                offset += (dimension + 1);
-            }
-        }
-        sums.push_back(sum);
-    }
-
-    // checking sums diagonally (right top -> left bottom)
-    // we iterate over each column because the first value for each diagonal sum is each value in
-    // the first row
-    for (int col = dimension - 1; col >= 0; --col) {
-        int sum = 0;
-        // offset counts the amount we have to travel in the vector to get from the first value to
-        // the current one, thus starting at 0
-        int offset = 0;
-        for (int step = 0; step < dimension; ++step) {
-            sum += genes[col + offset];
-            // we check if we reach the edge of the square with the current step by comparing it to
-            // the dimension
-            // -1 because vector starts index with zero and dimension is always one
-            // bigger than max column amount
-            if (col == step) {
-                // if we reach the edge of the square we basically move further two rows and then go
-                // backwards by one index, to wrap around
-                offset += (2 * dimension - 1);
-            } else {
-                // otherwise we move by dimension - 1 to ensure we are one step farther to the left
-                // in the next row compared to the previous step
-                offset += (dimension - 1);
-            }
-        }
-        sums.push_back(sum);
-    }
-
-    // from:
-    // https://www.dr-mikes-math-games-for-kids.com/magic-square-magic-number.html#:~:text=A%20magic%20square%20is%20a,number"%20of%20the%20magic%20square
-    int magicConstant = (dimension * dimension + 1) * dimension / 2;
     int correctSums = 0;
-    for (auto sum : sums) {
-        if (sum == magicConstant) {
-            ++correctSums;
-        }
-    }
-    //+variableCount to be conform with earlier return
-    // return correctSums + variableCount;
+    correctSums += count_correct_sums(semiMagicSums, dimension);
+    correctSums += count_correct_sums(panDiagonalSums, dimension);
+
     return correctSums;
 }
 
@@ -251,7 +145,8 @@ void print_magic_square(std::vector<int> values) {
     std::cout << std::endl << "Magic Square:" << std::endl << std::endl;
     int magicConstant = (dimension * dimension + 1) * dimension / 2;
     std::cout << "Magic constant should be: " << magicConstant << std::endl << std::endl;
-    int correctSums = 0;
+    int semiMagicCorrectSums = 0;
+    int pandiagonalCorrectSums = 0;
     for (int row = 0; row < values.size(); row += dimension) {
         int sum = 0;
         for (int col = 0; col < dimension; ++col) {
@@ -275,7 +170,7 @@ void print_magic_square(std::vector<int> values) {
         }
         std::cout << sum << std::endl;
         if (sum == magicConstant) {
-            ++correctSums;
+            ++semiMagicCorrectSums;
         }
     }
     std::cout << " ";
@@ -297,7 +192,7 @@ void print_magic_square(std::vector<int> values) {
         }
         std::cout << sum << " ";
         if (sum == magicConstant) {
-            ++correctSums;
+            ++semiMagicCorrectSums;
         }
     }
     std::cout << std::endl << std::endl;
@@ -318,7 +213,7 @@ void print_magic_square(std::vector<int> values) {
         }
         leftToRightSums.push_back(sum);
         if (sum == magicConstant) {
-            ++correctSums;
+            ++pandiagonalCorrectSums;
         }
     }
     std::vector<int> rightToLeftSums;
@@ -335,7 +230,7 @@ void print_magic_square(std::vector<int> values) {
         }
         rightToLeftSums.push_back(sum);
         if (sum == magicConstant) {
-            ++correctSums;
+            ++pandiagonalCorrectSums;
         }
     }
 
@@ -349,9 +244,11 @@ void print_magic_square(std::vector<int> values) {
         std::cout << std::to_string(s) << " ";
     }
     std::cout << std::endl << std::endl;
-    std::cout << "Amount of correct sums: " << correctSums << std::endl;
+    std::cout << "Amount of correct semi magic sums: " << semiMagicCorrectSums << std::endl;
     std::cout << "Amount for semi magic square should be: " << std::to_string(dimension * 2)
               << std::endl;
+    std::cout << "Amount of correct pandiagonal sums: "
+              << semiMagicCorrectSums + pandiagonalCorrectSums << std::endl;
     std::cout << "Amount for pandiagonal magic square should be: " << std::to_string(dimension * 4);
 }
 
