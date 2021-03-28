@@ -14,20 +14,27 @@ class Population {
   public:
     Population(std::string filepath, unsigned int max_generations, unsigned int size,
                double crossover_probability, double mutation_probability)
-        : variable_count(variable_count), max_generations(max_generations), size(size),
+        : max_generations(max_generations), size(size),
           crossover_probability(crossover_probability), mutation_probability(mutation_probability),
-          mersenne_twister_engine(random_device()), random_normalized_double(0.0, 1.0),
-          random_gene_index(0, variable_count - 1) {
+          mersenne_twister_engine(random_device()), random_normalized_double(0.0, 1.0) {
 
         genotypes.resize(size);
         new_genotypes.resize(size);
 
         parse_bounds_file(filepath);
+        // has to be initialized after parsing because variable_count only gets the correct value
+        // after the file is read
+        random_gene_index = std::uniform_int_distribution<int>(0, variable_count - 1);
         initialize_genotypes();
     }
 
     // Evolve all generations and print intermediate results
-    void evolve(std::function<double(std::vector<T>)> evaluation_function) {
+    void evolve(std::function<double(std::vector<T>)> evaluation_function,
+                std::function<void(std::vector<T> &, double)> mutation_function) {
+
+        // TODO: Calling this before the first evaluation as a quick fix for TODO in line 150
+        // (initialization still producing invalid values), remove this when it's not needed anymore
+        mutate_population(mutation_function);
         // Initial evaluation (this is called within the generation functions later)
         evaluate_all_fitnesses(evaluation_function);
         remember_best_genotype();
@@ -35,7 +42,9 @@ class Population {
         for (int generation = 0; generation < max_generations; generation++) {
             create_new_population();
             crossover_population();
-            mutate_population();
+            // mutation should alway happen after crossover because client then can fix unwanted
+            // combinations in his custom mutation function (e.g duplicate values)
+            mutate_population(mutation_function);
             report(generation);
             evaluate_all_fitnesses(evaluation_function);
             elitist();
@@ -62,6 +71,21 @@ class Population {
 
     Genotype<T> GetBestGenotype() const {
         return current_best_genotype;
+    }
+    // Return a random double between 0.0 and 1.0
+    double GetRandomNormalizedDouble() {
+        return random_normalized_double(mersenne_twister_engine);
+    }
+
+    // Return a random possible gene value at the given index, taking the lower and upper bounds
+    // into account
+    T GetRandomGeneValue(unsigned int index) {
+        // using round because otherwise upperbound will only be returned when we get exactly 1.0
+        // with GetRandomNormalizedDouble() when using int
+        // TODO: does this work with doubles?
+        return round(GetRandomNormalizedDouble() *
+                         (upper_gene_bound[index] - lower_gene_bound[index]) +
+                     lower_gene_bound[index]);
     }
 
   private:
@@ -128,31 +152,17 @@ class Population {
 
             // Set the genes to random numbers
             for (int gene = 0; gene < variable_count; gene++) {
-                genotype.genes[gene] = get_random_gene_value(gene);
+                // TODO: this still produces invalid (= not unique for every field) values for magic
+                // squares, maybe also extract this to a passed function
+                genotype.genes[gene] = GetRandomGeneValue(gene);
             }
         }
-    }
-
-    // Return a random double between 0.0 and 1.0
-    double get_random_normalized_double() {
-        return random_normalized_double(mersenne_twister_engine);
     }
 
     // Return a random int between 0 and the number of variables minus one, to be used as an index
     // for gene arrays
     unsigned int get_random_gene_index() {
         return random_gene_index(mersenne_twister_engine);
-    }
-
-    // Return a random possible gene value at the given index, taking the lower and upper bounds
-    // into account
-    T get_random_gene_value(unsigned int index) {
-        // using round because otherwise upperbound will only be returned when we get exactly 1.0
-        // with get_random_normalized_double() when using int
-        // TODO: does this work with doubles?
-        return round(get_random_normalized_double() *
-                         (upper_gene_bound[index] - lower_gene_bound[index]) +
-                     lower_gene_bound[index]);
     }
 
     /// Iterates through the population and crosses over randomly selected pairs.
@@ -162,7 +172,7 @@ class Population {
 
         for (int current_genotype = 0; current_genotype < size; ++current_genotype) {
             // Pick a random number for testing against the pre-defined crossover probability
-            double x = get_random_normalized_double();
+            double x = GetRandomNormalizedDouble();
 
             if (x < crossover_probability) {
                 // This genotype will be involved in a crossover
@@ -181,7 +191,6 @@ class Population {
     void crossover(int one, int two) {
         // Randomly select the point until which the crossover will be performed
         int cutoff_point = get_random_gene_index();
-
         for (int i = 0; i < cutoff_point; i++) {
             std::swap(genotypes[one].genes[i], genotypes[two].genes[i]);
         }
@@ -250,18 +259,10 @@ class Population {
     }
 
     // Mutate random genes of all genotypes.
-    void mutate_population() {
+    void mutate_population(std::function<void(std::vector<T> &, double)> mutation_function) {
         // Iterate over all genes in every genotype
         for (int i = 0; i < size; i++) {
-            for (int j = 0; j < variable_count; j++) {
-                // Draw a random number; if it is below the mutation probability, replace the gene
-                // with a random new one
-                double x = get_random_normalized_double();
-
-                if (x < mutation_probability) {
-                    genotypes[i].genes[j] = get_random_gene_value(j);
-                }
-            }
+            mutation_function(genotypes[i].genes, mutation_probability);
         }
     }
 
@@ -288,7 +289,7 @@ class Population {
 
         // Select survivors using the cumulative fitnesses
         for (int i = 0; i < size; i++) {
-            double p = get_random_normalized_double();
+            double p = GetRandomNormalizedDouble();
 
             if (genotypes[0].cumulative_fitness > p) {
                 new_genotypes[i] = genotypes[0];
