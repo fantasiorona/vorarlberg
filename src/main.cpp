@@ -1,16 +1,23 @@
 #include "Genotype.h"
 #include "Population.h"
+#include <fstream>
 #include <map>
 #include <vector>
 
 void print_semi_magic_square(std::vector<int> values, int dimension);
+void create_input_data();
 
 int main() {
+
+    // Uncomment to create input files
+    // create_input_data();
+
     // Create a new Population with genes consisting of three `double` variables
-    Population<int> population("input.txt", 9, 10000, 5000, 0.8, 0.35);
+    Population<int> population("inputs\\normal_dimension_3.txt", 10000, 5000, 0.8, 0.35);
 
     // Find dimension of magic square based on the input file
     int variableCount = population.GetVariableCount();
+    std::cout << variableCount;
     int dimension = sqrt(variableCount);
     // Check if input file makes sense for a square
     if (dimension * dimension != variableCount) {
@@ -89,6 +96,9 @@ void print_semi_magic_square(std::vector<int> values, int dimension) {
         int sum = 0;
         for (int col = 0; col < dimension; ++col) {
             int curValue = values[row + col];
+            if (curValue < 100) {
+                std::cout << "0";
+            }
             if (curValue < 10) {
                 std::cout << "0";
             }
@@ -97,13 +107,17 @@ void print_semi_magic_square(std::vector<int> values, int dimension) {
         }
 
         std::cout << "- ";
+        if (sum < 100) {
+            std::cout << "0";
+        }
         if (sum < 10) {
             std::cout << "0";
         }
         std::cout << sum << std::endl;
     }
+    std::cout << " ";
     for (int i = 0; i < dimension; i++) {
-        std::cout << "|  ";
+        std::cout << "|   ";
     }
     std::cout << std::endl;
     for (int col = 0; col < dimension; ++col) {
@@ -112,10 +126,54 @@ void print_semi_magic_square(std::vector<int> values, int dimension) {
             int curValue = values[row + col];
             sum += curValue;
         }
+        if (sum < 100) {
+            std::cout << "0";
+        }
         if (sum < 10) {
             std::cout << "0";
         }
         std::cout << sum << " ";
     }
     std::cout << std::endl;
+}
+
+void create_input_data() {
+    // File writing from
+    // https://www.sqlnethub.com/blog/how-to-write-to-text-file-from-c-plus-plus-program/
+
+    // create data for each necessary dimension
+    for (int dim = 3; dim <= 9; ++dim) {
+        // maxvalue for a normal dataset is dimension sqaured
+        int maxValue = dim * dim;
+        // creating string for lower and upper bounds in necessary format
+        std::string data = "1 " + std::to_string(maxValue);
+        // open file for writing
+        std::ofstream fw(("inputs\\normal_dimension_" + std::to_string(dim) + ".txt"),
+                         std::ofstream::out);
+        if (fw.is_open()) {
+            fw << std::to_string(maxValue) << std::endl;
+            // writing bounds as a line for every gene that is later neede
+            for (int line = 0; line < maxValue; ++line) {
+                fw << data << std::endl;
+            }
+            fw.close();
+        } else
+            std::cout << "Problem with opening file";
+        for (int factor = 2; factor < 5; ++factor) {
+            int nonNormalMaxvalue = maxValue * factor;
+            std::string nonNormalData = "1 " + std::to_string(nonNormalMaxvalue);
+            // open file for writing
+            std::ofstream fw(("inputs\\notnormal_factor_" + std::to_string(factor) + "_dimension_" +
+                              std::to_string(dim) + ".txt"),
+                             std::ofstream::out);
+            if (fw.is_open()) {
+                fw << std::to_string(maxValue) << std::endl;
+                for (int j = 0; j < maxValue; j++) {
+                    fw << nonNormalData << "\n";
+                }
+                fw.close();
+            } else
+                std::cout << "Problem with opening file";
+        }
+    }
 }

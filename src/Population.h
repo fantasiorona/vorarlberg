@@ -12,16 +12,15 @@
 template <class T>
 class Population {
   public:
-    Population(std::string filepath, unsigned int variable_count, unsigned int max_generations,
-               unsigned int size, double crossover_probability, double mutation_probability)
+    Population(std::string filepath, unsigned int max_generations, unsigned int size,
+               double crossover_probability, double mutation_probability)
         : variable_count(variable_count), max_generations(max_generations), size(size),
           crossover_probability(crossover_probability), mutation_probability(mutation_probability),
           mersenne_twister_engine(random_device()), random_normalized_double(0.0, 1.0),
           random_gene_index(0, variable_count - 1) {
+
         genotypes.resize(size);
         new_genotypes.resize(size);
-        lower_gene_bound.resize(variable_count);
-        upper_gene_bound.resize(variable_count);
 
         parse_bounds_file(filepath);
         initialize_genotypes();
@@ -74,7 +73,7 @@ class Population {
     std::vector<T> upper_gene_bound;
     std::vector<T> lower_gene_bound;
 
-    const unsigned int variable_count;
+    unsigned int variable_count;
     const unsigned int max_generations;
     const unsigned int size;
 
@@ -89,9 +88,11 @@ class Population {
     std::uniform_int_distribution<int> random_gene_index;
 
     // Parse a file with the format:
+    // [variable_count]
     // [lower bound 1] [upper bound 1]
     // [lower bound 2] [upper bound 2]
     // ...
+    // [lower bound variable_count] [upper bound variable_count]
     // for all variable_count variables.
     void parse_bounds_file(std::string filepath) {
         std::ifstream input;
@@ -102,6 +103,10 @@ class Population {
             exit(1);
         }
 
+        // reading in variable_count from file to make iniatilzation and testing easier
+        input >> variable_count;
+        lower_gene_bound.resize(variable_count);
+        upper_gene_bound.resize(variable_count);
         // Parse and set bounds
         for (int i = 0; i < variable_count; i++) {
             T lower_bound;
