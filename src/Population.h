@@ -30,7 +30,8 @@ class Population {
 
     // Evolve all generations and print intermediate results
     void evolve(std::function<double(std::vector<T>)> evaluation_function,
-                std::function<void(std::vector<T> &, double)> mutation_function) {
+                std::function<void(std::vector<T> &, double)> mutation_function,
+                std::function<void(std::vector<T> &, std::vector<T> &)> crossover_function) {
 
         // TODO: Calling this before the first evaluation as a quick fix for TODO in line 150
         // (initialization still producing invalid values), remove this when it's not needed anymore
@@ -41,7 +42,7 @@ class Population {
 
         for (int generation = 0; generation < max_generations; generation++) {
             create_new_population();
-            crossover_population();
+            crossover_population(crossover_function);
             // mutation should alway happen after crossover because client then can fix unwanted
             // combinations in his custom mutation function (e.g duplicate values)
             mutate_population(mutation_function);
@@ -166,7 +167,8 @@ class Population {
     }
 
     /// Iterates through the population and crosses over randomly selected pairs.
-    void crossover_population() {
+    void crossover_population(
+        std::function<void(std::vector<T> &, std::vector<T> &)> crossover_function) {
         int current_match;
         int match_count = 0;
 
@@ -179,7 +181,7 @@ class Population {
                 ++match_count;
 
                 if (match_count % 2 == 0) {
-                    crossover(current_match, current_genotype);
+                    crossover(crossover_function, current_match, current_genotype);
                 } else {
                     current_match = current_genotype;
                 }
@@ -188,12 +190,10 @@ class Population {
     }
 
     /// Performs a crossover on the two given parents.
-    void crossover(int one, int two) {
+    void crossover(std::function<void(std::vector<T> &, std::vector<T> &)> crossover_function,
+                   int one, int two) {
         // Randomly select the point until which the crossover will be performed
-        int cutoff_point = get_random_gene_index();
-        for (int i = 0; i < cutoff_point; i++) {
-            std::swap(genotypes[one].genes[i], genotypes[two].genes[i]);
-        }
+        crossover_function(genotypes[one].genes, genotypes[two].genes);
     }
 
     // Elitist function: find the best and worse genotypes, remember the best, and replace the worst

@@ -10,11 +10,12 @@ double evaluate_for_semi_magic_square(std::vector<int> genes);
 double evaluate_for_pandiagonal_magic_square(std::vector<int> genes);
 
 void mutate_genotype(std::vector<int> &genes, double mutationProbability);
+void crossover_genotypes(std::vector<int> &, std::vector<int> &);
 int dimension = 0;
 // Create a new Population with genes consisting of three `double` variables
 // global because we use it the mutation function
 // yes this is spaghetti code
-Population<int> population("inputs\\normal_dimension_4.txt", 100, 2500, 0.4, 0.8);
+Population<int> population("inputs/normal_dimension_4.txt", 100, 2500, 0.4, 0.8);
 int main() {
 
     // Uncomment to create input files
@@ -33,7 +34,7 @@ int main() {
     }
 
     // Evolve the population to maximize the given equation
-    population.evolve(evaluate_for_semi_magic_square, mutate_genotype);
+    population.evolve(evaluate_for_semi_magic_square, mutate_genotype, crossover_genotypes);
 
     // Print the result
     population.print_result();
@@ -138,6 +139,14 @@ void mutate_genotype(std::vector<int> &genes, double mutationProbability) {
         // switching used flag
         usedValues[newValue - 1] = true;
         genes[j] = newValue;
+    }
+}
+
+void crossover_genotypes(std::vector<int> &genes1, std::vector<int> &genes2) {
+    // TODO: Implement sensibly
+    int cutoff_point = 3;
+    for (int i = 0; i < cutoff_point; i++) {
+        std::swap(genes1[i], genes2[i]);
     }
 }
 
