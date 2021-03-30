@@ -17,7 +17,7 @@ elif sys.platform == 'darwin':
     program_ending = '.out'
 elif sys.platform == 'win32' or sys.platform == 'msys':
     env.Append(CCFLAGS='/openmp')
-    env.Append(LINKFLAGS = '/openmp')
+    env.Append(CCFLAGS='/EHsc')
     program_ending = '.exe'
 else:
     host_platform = "Unknown platform: " + sys.platform
