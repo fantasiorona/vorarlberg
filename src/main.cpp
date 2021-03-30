@@ -120,11 +120,18 @@ double evaluate_for_pandiagonal_magic_square(std::vector<int> genes) {
 }
 
 void initialze_genotype(std::vector<int> &genes) {
+    int variableAmount = genes.size();
+    std::vector<bool> usedValues(variableAmount, false);
     // Set the genes to random numbers
     for (int gene = 0; gene < genes.size(); gene++) {
-        // TODO: this still produces invalid (= not unique for every field) values for magic
-        // squares, maybe also extract this to a passed function
-        genes[gene] = population.GetRandomGeneValue(gene);
+        int value = population.GetRandomGeneValue(gene);
+        // counting up if value is already in use, so we never get duplicate values
+        while (usedValues[value - 1]) {
+            ++value;
+            if (value == variableAmount + 1) value = 1;
+        }
+        usedValues[value - 1] = true;
+        genes[gene] = value;
     }
 }
 
