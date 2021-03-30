@@ -19,11 +19,16 @@ std::vector<int> crossoverInverseSequence2;
 std::vector<int> crossoverPositionSequence1;
 std::vector<int> crossoverPositionSequence2;
 void crossover_genotypes(std::vector<int> &, std::vector<int> &);
+const int maxGenerations = 25;
+const int populationSize = 5000;
+const float crossoverChance = 0.8;
+const float mutationChance = 0.5;
+const std::string file = "inputs/normal_dimension_5.txt";
 int dimension = 0;
 // Create a new Population with genes consisting of three `double` variables
 // global because we use it the mutation function
 // yes this is spaghetti code
-Population<int> population("inputs/normal_dimension_5.txt", 100, 5000, 0.4, 0.8);
+Population<int> population(file, maxGenerations, populationSize, crossoverChance, mutationChance);
 int main() {
 
     // Uncomment to create input files
@@ -53,6 +58,12 @@ int main() {
     // Print the result
     population.print_result();
     Genotype<int> bestMember = population.GetBestGenotype();
+    std::cout << std::endl << std::endl << "Result for " << file << ":" << std::endl;
+    std::cout << "Settings: " << std::endl;
+    std::cout << "     Max generations:    " << maxGenerations << std::endl;
+    std::cout << "     Populations size:   " << populationSize << std::endl;
+    std::cout << "     Crossover chance:   " << crossoverChance << std::endl;
+    std::cout << "     Mutation chance:    " << mutationChance << std::endl << std::endl;
     print_magic_square(bestMember.genes);
 }
 std::vector<int> calc_sums(const std::vector<int> &square, int dimension) {
