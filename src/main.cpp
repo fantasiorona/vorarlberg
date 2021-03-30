@@ -20,7 +20,7 @@ std::vector<int> crossoverInverseSequence2;
 std::vector<int> crossoverPositionSequence1;
 std::vector<int> crossoverPositionSequence2;
 void crossover_genotypes(std::vector<int> &, std::vector<int> &);
-const int maxGenerations = 25;
+const int maxGenerations = 250;
 const int populationSize = 5000;
 const float crossoverChance = 0.8;
 const float mutationChance = 0.5;
@@ -81,7 +81,9 @@ std::vector<int> calc_sums(const std::vector<int> &square, int dimension) {
 
     int total_sum = 0;
     std::vector<int> sums(dimension * 2);
+#pragma omp parallel for
     for (int row = 0; row < dimension; ++row) {
+#pragma omp parallel for
         for (int col = 0; col < dimension; ++col) {
             int val = square[row * dimension + col];
             sums[row] += val;
@@ -95,8 +97,9 @@ std::vector<int> calc_sums(const std::vector<int> &square, int dimension) {
 std::vector<int> calc_cross_diagonals(const std::vector<int> &square, int dimension) {
 
     std::vector<int> sums(dimension * 2);
-
+#pragma omp parallel for
     for (int diag = 0; diag < dimension; ++diag) {
+#pragma omp parallel for
         for (int cell = 0; cell < dimension; ++cell) {
             int idx = diag + cell * (dimension - 1);
             if (diag + 1 <= cell) idx += dimension;

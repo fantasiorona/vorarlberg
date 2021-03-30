@@ -45,8 +45,6 @@ class Population {
         for (int generation = 0; generation < max_generations; generation++) {
             create_new_population();
             crossover_population(crossover_function);
-            // mutation should alway happen after crossover because client then can fix unwanted
-            // combinations in his custom mutation function (e.g duplicate values)
             mutate_population(mutation_function);
             report(generation);
             evaluate_all_fitnesses(evaluation_function);
@@ -256,7 +254,8 @@ class Population {
 
     // Mutate random genes of all genotypes.
     void mutate_population(std::function<void(std::vector<T> &, double)> mutation_function) {
-        // Iterate over all genes in every genotype
+// Iterate over all genes in every genotype
+#pragma omp parallel for
         for (int i = 0; i < size; i++) {
             mutation_function(genotypes[i].genes, mutation_probability);
         }
@@ -271,7 +270,8 @@ class Population {
             fitness_sum = fitness_sum + genotypes[i].fitness;
         }
 
-        // Calculate the relative fitness of each member and save it
+// Calculate the relative fitness of each member and save it
+#pragma omp parallel for
         for (int i = 0; i < size; i++) {
             genotypes[i].relative_fitness = genotypes[i].fitness / fitness_sum;
         }
@@ -302,7 +302,8 @@ class Population {
             }
         }
 
-        // Overwrite the old population with the new one
+// Overwrite the old population with the new one
+#pragma omp parallel for
         for (int i = 0; i < size; i++) {
             genotypes[i] = new_genotypes[i];
         }
