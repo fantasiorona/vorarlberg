@@ -25,17 +25,19 @@ class Population {
         // has to be initialized after parsing because variable_count only gets the correct value
         // after the file is read
         random_gene_index = std::uniform_int_distribution<int>(0, variable_count - 1);
-        initialize_genotypes();
     }
 
     // Evolve all generations and print intermediate results
-    void evolve(std::function<double(std::vector<T>)> evaluation_function,
+    void evolve(std::function<void(std::vector<T> &)> initialization_function,
+                std::function<double(std::vector<T>)> evaluation_function,
                 std::function<void(std::vector<T> &, double)> mutation_function,
                 std::function<void(std::vector<T> &, std::vector<T> &)> crossover_function) {
 
-        // TODO: Calling this before the first evaluation as a quick fix for TODO in line 150
-        // (initialization still producing invalid values), remove this when it's not needed anymore
-        mutate_population(mutation_function);
+        // moved this here because to define initialization_function we need functionality from
+        // population object, so we can't do it in constructor
+        // TODO: think about a smarter solution
+        initialize_genotypes(initialization_function);
+
         // Initial evaluation (this is called within the generation functions later)
         evaluate_all_fitnesses(evaluation_function);
         remember_best_genotype();
@@ -147,16 +149,15 @@ class Population {
     }
 
     // Initialize Genotype genes to random values
-    void initialize_genotypes() {
+    void initialize_genotypes(std::function<void(std::vector<T> &)> initialization_function) {
         for (Genotype<T> &genotype : genotypes) {
             genotype.set_variable_count(variable_count);
-
-            // Set the genes to random numbers
-            for (int gene = 0; gene < variable_count; gene++) {
-                // TODO: this still produces invalid (= not unique for every field) values for magic
-                // squares, maybe also extract this to a passed function
-                genotype.genes[gene] = GetRandomGeneValue(gene);
+            initialization_function(genotype.genes);
+            std::cout << "initialized values: ";
+            for (auto g : genotype.genes) {
+                std::cout << g << ",";
             }
+            std::cout << std::endl;
         }
     }
 

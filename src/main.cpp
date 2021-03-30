@@ -9,7 +9,7 @@ void print_genes(std::vector<int> values);
 void create_input_data();
 double evaluate_for_semi_magic_square(std::vector<int> genes);
 double evaluate_for_pandiagonal_magic_square(std::vector<int> genes);
-
+void initialze_genotype(std::vector<int> &genes);
 void mutate_genotype(std::vector<int> &genes, double mutationProbability);
 
 // creating vectors here so we dont have to do it in each crossover function
@@ -22,7 +22,7 @@ int dimension = 0;
 // Create a new Population with genes consisting of three `double` variables
 // global because we use it the mutation function
 // yes this is spaghetti code
-Population<int> population("inputs/normal_dimension_3.txt", 100, 2500, 0.4, 0.8);
+Population<int> population("inputs/normal_dimension_3.txt", 20, 20, 0.4, 0.8);
 int main() {
 
     // Uncomment to create input files
@@ -46,14 +46,14 @@ int main() {
     crossoverPositionSequence2.resize(variableCount);
 
     // Evolve the population to maximize the given equation
-    population.evolve(evaluate_for_semi_magic_square, mutate_genotype, crossover_genotypes);
+    population.evolve(initialze_genotype, evaluate_for_semi_magic_square, mutate_genotype,
+                      crossover_genotypes);
 
     // Print the result
     population.print_result();
     Genotype<int> bestMember = population.GetBestGenotype();
     print_magic_square(bestMember.genes);
 }
-
 std::vector<int> calc_sums(const std::vector<int> &square, int dimension) {
 
     int total_sum = 0;
@@ -117,6 +117,15 @@ double evaluate_for_pandiagonal_magic_square(std::vector<int> genes) {
     correctSums += count_correct_sums(panDiagonalSums, dimension);
 
     return correctSums;
+}
+
+void initialze_genotype(std::vector<int> &genes) {
+    // Set the genes to random numbers
+    for (int gene = 0; gene < genes.size(); gene++) {
+        // TODO: this still produces invalid (= not unique for every field) values for magic
+        // squares, maybe also extract this to a passed function
+        genes[gene] = population.GetRandomGeneValue(gene);
+    }
 }
 
 // This only handels normal magic square
