@@ -153,11 +153,6 @@ class Population {
         for (Genotype<T> &genotype : genotypes) {
             genotype.set_variable_count(variable_count);
             initialization_function(genotype.genes);
-            std::cout << "initialized values: ";
-            for (auto g : genotype.genes) {
-                std::cout << g << ",";
-            }
-            std::cout << std::endl;
         }
     }
 

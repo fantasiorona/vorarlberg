@@ -9,6 +9,7 @@ void print_genes(std::vector<int> values);
 void create_input_data();
 double evaluate_for_semi_magic_square(std::vector<int> genes);
 double evaluate_for_pandiagonal_magic_square(std::vector<int> genes);
+double evaluate_for_inlaid_semi_magic_square(std::vector<int> genes);
 void initialze_genotype(std::vector<int> &genes);
 void mutate_genotype(std::vector<int> &genes, double mutationProbability);
 
@@ -22,7 +23,7 @@ int dimension = 0;
 // Create a new Population with genes consisting of three `double` variables
 // global because we use it the mutation function
 // yes this is spaghetti code
-Population<int> population("inputs/normal_dimension_3.txt", 20, 20, 0.4, 0.8);
+Population<int> population("inputs/normal_dimension_5.txt", 100, 5000, 0.4, 0.8);
 int main() {
 
     // Uncomment to create input files
@@ -46,7 +47,7 @@ int main() {
     crossoverPositionSequence2.resize(variableCount);
 
     // Evolve the population to maximize the given equation
-    population.evolve(initialze_genotype, evaluate_for_semi_magic_square, mutate_genotype,
+    population.evolve(initialze_genotype, evaluate_for_inlaid_semi_magic_square, mutate_genotype,
                       crossover_genotypes);
 
     // Print the result
@@ -71,7 +72,7 @@ std::vector<int> calc_sums(const std::vector<int> &square, int dimension) {
 
 std::vector<int> calc_cross_diagonals(const std::vector<int> &square, int dimension) {
 
-    std::vector<int> sums(dimension * 2); // /
+    std::vector<int> sums(dimension * 2);
 
     for (int diag = 0; diag < dimension; ++diag) {
         for (int cell = 0; cell < dimension; ++cell) {
@@ -85,6 +86,29 @@ std::vector<int> calc_cross_diagonals(const std::vector<int> &square, int dimens
         }
     }
     return sums;
+}
+
+// this just uses the next smaller concentric square as it was the simplest to implement (and it
+// already takes a lot of time to calculate)
+std::vector<int> calc_inlaid_semi_magic_squares(const std::vector<int> &square, int dimension) {
+    if (dimension <= 3) {
+        std::vector<int> sums;
+        return sums;
+    }
+    // create inline square from data
+    int newDimension = (dimension - 2);
+
+    std::vector<int> inlaid = std::vector<int>(newDimension * newDimension, 0);
+    int idx = 0;
+    for (int row = 1; row < dimension - 1; ++row) {
+        for (int col = 1; col < dimension - 1; ++col) {
+            inlaid[idx++] = square[row * dimension + col];
+        }
+    }
+
+    // passing a new vector is pretty sub optimal
+    // TODO: pass original vector with a offset value
+    return calc_sums(inlaid, newDimension); // semi-magic squares
 }
 
 int count_correct_sums(const std::vector<int> &sums, int dimension) {
@@ -115,6 +139,33 @@ double evaluate_for_pandiagonal_magic_square(std::vector<int> genes) {
     int correctSums = 0;
     correctSums += count_correct_sums(semiMagicSums, dimension);
     correctSums += count_correct_sums(panDiagonalSums, dimension);
+
+    return correctSums;
+}
+
+double evaluate_for_inlaid_semi_magic_square(std::vector<int> genes) {
+
+    std::vector<int> semiMagicSums = calc_sums(genes, dimension);
+    std::vector<int> inlaidSums = calc_inlaid_semi_magic_squares(genes, dimension);
+
+    int correctSums = 0;
+    correctSums += count_correct_sums(semiMagicSums, dimension);
+
+    // we cant simply compare inlaid square with magic constant because the values are not only
+    // normal (meaning for example 1-9 for dimension 3), but can contain values from the bigger
+    // encircling square (so 1-25 for dimension 3)
+    // instead we count the duplicate values in the sums to find how good the inlaid square is
+    // from https://stackoverflow.com/a/32238115
+    std::map<int, int> sumDuplicates;
+    for_each(inlaidSums.begin(), inlaidSums.end(),
+             [&sumDuplicates](int val) { sumDuplicates[val]++; });
+    // finding max duplicates
+    int sumDuplicateMax = 0;
+    for (auto duplicate : sumDuplicates) {
+        int count = duplicate.second;
+        sumDuplicateMax = sumDuplicateMax < count ? count : sumDuplicateMax;
+    }
+    correctSums += sumDuplicateMax;
 
     return correctSums;
 }
@@ -247,12 +298,36 @@ void print_genes(std::vector<int> values) {
     }
     std::cout << std::endl;
 }
+
+// do not look at this function it is one of the worst things i have ever written
 void print_magic_square(std::vector<int> values) {
     std::cout << std::endl << "Magic Square:" << std::endl << std::endl;
     int magicConstant = (dimension * dimension + 1) * dimension / 2;
-    std::cout << "Magic constant should be: " << magicConstant << std::endl << std::endl;
+    std::cout << "Magic constant should be: " << magicConstant << std::endl;
+
+    std::vector<int> inlaidSums = calc_inlaid_semi_magic_squares(values, dimension);
+    std::map<int, int> sumDuplicates;
+    for_each(inlaidSums.begin(), inlaidSums.end(),
+             [&sumDuplicates](int val) { sumDuplicates[val]++; });
+    // finding max duplicates
+    int sumDuplicateMax = 0;
+    int bestMagicConstant = -1;
+    for (auto duplicate : sumDuplicates) {
+        int count = duplicate.second;
+        if (sumDuplicateMax < count) {
+            sumDuplicateMax = count;
+            bestMagicConstant = duplicate.first;
+        }
+    }
+    int inlaidCorrectSums = 0;
+    for (auto s : inlaidSums) {
+        if (s == bestMagicConstant) ++inlaidCorrectSums;
+    }
+    std::cout << "Magic constant with most duplicates in the inlaid square is: "
+              << bestMagicConstant << std::endl
+              << std::endl;
+
     int semiMagicCorrectSums = 0;
-    int pandiagonalCorrectSums = 0;
     for (int row = 0; row < values.size(); row += dimension) {
         int sum = 0;
         for (int col = 0; col < dimension; ++col) {
@@ -301,61 +376,51 @@ void print_magic_square(std::vector<int> values) {
             ++semiMagicCorrectSums;
         }
     }
+
     std::cout << std::endl << std::endl;
     std::cout << "Broken diagonal sums are: " << std::endl;
-
-    // TODO: code duplication from evaluate_for_pandiagonal_magic_square()
-    std::vector<int> leftToRightSums;
-    for (int col = 0; col < dimension; ++col) {
-        int sum = 0;
-        int offset = 0;
-        for (int step = 0; step < dimension; ++step) {
-            sum += values[col + offset];
-            if (dimension - 1 - col == step) {
-                offset += 1;
-            } else {
-                offset += (dimension + 1);
-            }
-        }
-        leftToRightSums.push_back(sum);
-        if (sum == magicConstant) {
-            ++pandiagonalCorrectSums;
-        }
-    }
-    std::vector<int> rightToLeftSums;
-    for (int col = dimension - 1; col >= 0; --col) {
-        int sum = 0;
-        int offset = 0;
-        for (int step = 0; step < dimension; ++step) {
-            sum += values[col + offset];
-            if (col == step) {
-                offset += (2 * dimension - 1);
-            } else {
-                offset += (dimension - 1);
-            }
-        }
-        rightToLeftSums.push_back(sum);
-        if (sum == magicConstant) {
-            ++pandiagonalCorrectSums;
-        }
-    }
-
+    std::vector<int> pandiagonalSums = calc_cross_diagonals(values, dimension);
     std::cout << "Left to Right: ";
-    for (auto s : leftToRightSums) {
-        std::cout << std::to_string(s) << " ";
+    for (int i = dimension; i < dimension * 2; ++i) {
+        std::cout << std::to_string(pandiagonalSums[i]) << " ";
     }
     std::cout << std::endl;
     std::cout << "Right to Left: ";
-    for (auto s : rightToLeftSums) {
-        std::cout << std::to_string(s) << " ";
+    for (int i = 0; i < dimension; ++i) {
+        std::cout << std::to_string(pandiagonalSums[i]) << " ";
     }
+    int pandiagonalCorrectSums = count_correct_sums(pandiagonalSums, dimension);
+
+    std::cout << std::endl << std::endl;
+    std::cout << "Inlaid sums are: " << std::endl;
+    std::cout << "Rows: ";
+    for (int i = 0; i < dimension - 2; i++) {
+        std::cout << inlaidSums[i] << ", ";
+    }
+    std::cout << std::endl;
+    std::cout << "Columns: ";
+    for (int i = dimension - 2; i < (dimension - 2) * 2; i++) {
+        std::cout << inlaidSums[i] << ", ";
+    }
+    std::cout << std::endl;
+
     std::cout << std::endl << std::endl;
     std::cout << "Amount of correct semi magic sums: " << semiMagicCorrectSums << std::endl;
     std::cout << "Amount for semi magic square should be: " << std::to_string(dimension * 2)
+              << std::endl
               << std::endl;
-    std::cout << "Amount of correct pandiagonal sums: "
-              << semiMagicCorrectSums + pandiagonalCorrectSums << std::endl;
-    std::cout << "Amount for pandiagonal magic square should be: " << std::to_string(dimension * 4);
+    std::cout << "Amount of correct pandiagonal sums: " << semiMagicCorrectSums << "(semi) + "
+              << pandiagonalCorrectSums
+              << "(pandiagonal) = " << semiMagicCorrectSums + pandiagonalCorrectSums << std::endl;
+    std::cout << "Amount for pandiagonal magic square should be: " << std::to_string(dimension * 4)
+              << std::endl
+              << std::endl;
+    std::cout << "Amount of correct inlaids sums: " << semiMagicCorrectSums << "(semi) + "
+              << inlaidCorrectSums << "(inlaid) = " << semiMagicCorrectSums + inlaidCorrectSums
+              << std::endl;
+    std::cout << "Amount for inlaids magic square should be: "
+              << std::to_string(dimension * 2 + (dimension - 2) * 2) << std::endl
+              << std::endl;
 }
 
 void create_input_data() {
