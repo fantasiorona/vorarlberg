@@ -1,5 +1,6 @@
 #include "Genotype.h"
 #include "Population.h"
+#include <chrono>
 #include <fstream>
 #include <map>
 #include <vector>
@@ -30,6 +31,7 @@ int dimension = 0;
 // yes this is spaghetti code
 Population<int> population(file, maxGenerations, populationSize, crossoverChance, mutationChance);
 int main() {
+    auto start = std::chrono::high_resolution_clock::now();
 
     // Uncomment to create input files
     // create_input_data();
@@ -54,16 +56,25 @@ int main() {
     // Evolve the population to maximize the given equation
     population.evolve(initialze_genotype, evaluate_for_inlaid_semi_magic_square, mutate_genotype,
                       crossover_genotypes);
+    // population.print_result();
 
     // Print the result
-    population.print_result();
-    Genotype<int> bestMember = population.GetBestGenotype();
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+    int seconds = duration.count() / 1000000;
+    int milliseconds = (duration.count() - (seconds * 1000000)) / 1000;
+    int microseconds = (duration.count() - (seconds * 1000000) - (milliseconds * 1000));
+
     std::cout << std::endl << std::endl << "Result for " << file << ":" << std::endl;
     std::cout << "Settings: " << std::endl;
     std::cout << "     Max generations:    " << maxGenerations << std::endl;
     std::cout << "     Populations size:   " << populationSize << std::endl;
     std::cout << "     Crossover chance:   " << crossoverChance << std::endl;
-    std::cout << "     Mutation chance:    " << mutationChance << std::endl << std::endl;
+    std::cout << "     Mutation chance:    " << mutationChance << std::endl;
+    std::cout << "Took: " << seconds << "s " << milliseconds << "ms " << microseconds << "us"
+              << std::endl
+              << std::endl;
+    Genotype<int> bestMember = population.GetBestGenotype();
     print_magic_square(bestMember.genes);
 }
 std::vector<int> calc_sums(const std::vector<int> &square, int dimension) {
