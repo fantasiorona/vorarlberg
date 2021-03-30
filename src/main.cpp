@@ -135,38 +135,24 @@ void initialze_genotype(std::vector<int> &genes) {
     }
 }
 
-// This only handels normal magic square
+// This only handles normal magic square
 // TODO: also implement for non normal magic squares
 void mutate_genotype(std::vector<int> &genes, double mutationProbability) {
-    int variableCount = genes.size();
-
-    // TODO: creating this vectors here probably isn't ideal
-    std::vector<bool> usedValues;
-    for (int i = 0; i < variableCount; ++i) {
-        usedValues.push_back(false);
-    }
-
+    int variableAmount = genes.size();
     // iterating over each gene
-    for (int j = 0; j < variableCount; ++j) {
+    for (int j = 0; j < variableAmount; ++j) {
         // random chance to mutate gene
         double x = population.GetRandomNormalizedDouble();
         int newValue = 0;
         if (x < mutationProbability) {
-            // get a random value
-            newValue = population.GetRandomGeneValue(j);
-        } else {
-            // take the old value when not mutating
-            newValue = genes[j];
+            int swapIndex = population.GetRandomGeneValue(0) - 1;
+            // make sure we dont swap in place
+            while (swapIndex == j) {
+                ++swapIndex;
+                if (swapIndex == variableAmount + 1) swapIndex = 1;
+            }
+            std::swap(genes[j], genes[swapIndex]);
         }
-
-        // count up while its not valid
-        while (usedValues[newValue - 1]) {
-            ++newValue;
-            newValue = (newValue == variableCount + 1 ? 1 : newValue);
-        }
-        // switching used flag
-        usedValues[newValue - 1] = true;
-        genes[j] = newValue;
     }
 }
 
