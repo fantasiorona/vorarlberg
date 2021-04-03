@@ -1,5 +1,6 @@
 #include "Genotype.h"
 #include "Population.h"
+#include <algorithm>
 #include <chrono>
 #include <fstream>
 #include <map>
