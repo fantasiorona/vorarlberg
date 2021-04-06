@@ -6,12 +6,12 @@
 #include <map>
 #include <vector>
 
-void print_magic_square(std::vector<int> values);
-void print_genes(std::vector<int> values);
+void print_magic_square(std::vector<int> &values);
+void print_genes(std::vector<int> &values);
 void create_input_data();
-double evaluate_for_semi_magic_square(std::vector<int> genes);
-double evaluate_for_pandiagonal_magic_square(std::vector<int> genes);
-double evaluate_for_inlaid_semi_magic_square(std::vector<int> genes);
+double evaluate_for_semi_magic_square(std::vector<int> &genes);
+double evaluate_for_pandiagonal_magic_square(std::vector<int> &genes);
+double evaluate_for_inlaid_semi_magic_square(std::vector<int> &genes);
 void initialze_genotype(std::vector<int> &genes);
 void mutate_genotype(std::vector<int> &genes, double mutationProbability);
 
@@ -21,12 +21,12 @@ std::vector<int> crossoverInverseSequence2;
 std::vector<int> crossoverPositionSequence1;
 std::vector<int> crossoverPositionSequence2;
 void crossover_genotypes(std::vector<int> &, std::vector<int> &);
-const int maxGenerations = 250;
-const int populationSize = 5000;
-const float crossoverChance = 0.8;
-const float mutationChance = 0.5;
+const int maxGenerations = 1000000;
+const int populationSize = 25;
+const float crossoverChance = 0.7;
+const float mutationChance = 0.1;
 const std::string file = "inputs/normal_dimension_5.txt";
-int dimension = 0;
+int dimension = 5;
 // Create a new Population with genes consisting of three `double` variables
 // global because we use it the mutation function
 // yes this is spaghetti code
@@ -81,10 +81,8 @@ int main() {
 std::vector<int> calc_sums(const std::vector<int> &square, int dimension) {
 
     int total_sum = 0;
-    std::vector<int> sums(dimension * 2);
-#pragma omp parallel for
+    std::vector<int> sums(dimension * 2 + 1);
     for (int row = 0; row < dimension; ++row) {
-#pragma omp parallel for
         for (int col = 0; col < dimension; ++col) {
             int val = square[row * dimension + col];
             sums[row] += val;
@@ -97,10 +95,8 @@ std::vector<int> calc_sums(const std::vector<int> &square, int dimension) {
 
 std::vector<int> calc_cross_diagonals(const std::vector<int> &square, int dimension) {
 
-    std::vector<int> sums(dimension * 2);
-#pragma omp parallel for
+    std::vector<int> sums(dimension * 2 + 1);
     for (int diag = 0; diag < dimension; ++diag) {
-#pragma omp parallel for
         for (int cell = 0; cell < dimension; ++cell) {
             int idx = diag + cell * (dimension - 1);
             if (diag + 1 <= cell) idx += dimension;
@@ -118,8 +114,7 @@ std::vector<int> calc_cross_diagonals(const std::vector<int> &square, int dimens
 // already takes a lot of time to calculate)
 std::vector<int> calc_inlaid_semi_magic_squares(const std::vector<int> &square, int dimension) {
     if (dimension <= 3) {
-        std::vector<int> sums;
-        return sums;
+        return std::vector<int>(dimension * dimension, 0);
     }
     // create inline square from data
     int newDimension = (dimension - 2);
@@ -150,13 +145,13 @@ int count_correct_sums(const std::vector<int> &sums, int dimension) {
     return correctSums;
 }
 
-double evaluate_for_semi_magic_square(std::vector<int> genes) {
+double evaluate_for_semi_magic_square(std::vector<int> &genes) {
     std::vector<int> semiMagicSums = calc_sums(genes, dimension);
     int correctSums = count_correct_sums(semiMagicSums, dimension);
     return correctSums;
 }
 
-double evaluate_for_pandiagonal_magic_square(std::vector<int> genes) {
+double evaluate_for_pandiagonal_magic_square(std::vector<int> &genes) {
 
     std::vector<int> semiMagicSums = calc_sums(genes, dimension);
 
@@ -169,7 +164,7 @@ double evaluate_for_pandiagonal_magic_square(std::vector<int> genes) {
     return correctSums;
 }
 
-double evaluate_for_inlaid_semi_magic_square(std::vector<int> genes) {
+double evaluate_for_inlaid_semi_magic_square(std::vector<int> &genes) {
 
     std::vector<int> semiMagicSums = calc_sums(genes, dimension);
     std::vector<int> inlaidSums = calc_inlaid_semi_magic_squares(genes, dimension);
@@ -314,7 +309,7 @@ void crossover_genotypes(std::vector<int> &genes1, std::vector<int> &genes2) {
     }
 }
 
-void print_genes(std::vector<int> values) {
+void print_genes(std::vector<int> &values) {
     for (int i = 0; i < values.size(); ++i) {
         if (values[i] < 0) {
             std::cout << "X, ";
@@ -326,7 +321,7 @@ void print_genes(std::vector<int> values) {
 }
 
 // do not look at this function it is one of the worst things i have ever written
-void print_magic_square(std::vector<int> values) {
+void print_magic_square(std::vector<int> &values) {
     std::cout << std::endl << "Magic Square:" << std::endl << std::endl;
     int magicConstant = (dimension * dimension + 1) * dimension / 2;
     std::cout << "Magic constant should be: " << magicConstant << std::endl;

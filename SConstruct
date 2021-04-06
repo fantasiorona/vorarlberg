@@ -6,17 +6,12 @@ env = DefaultEnvironment(tools=['default', 'compilation_db'])
 env.CompilationDatabase()
 
 if sys.platform.startswith('linux'):
-    env.Append(CCFLAGS='-g')
-    env.Append(CCFLAGS='-fopenmp')
-    env.Append(LINKFLAGS = '-fopenmp')
+    env.Append(CCFLAGS=['-g', '-O2'])
     program_ending = '.out'
 elif sys.platform == 'darwin':
     env.Append(CCFLAGS='-g')
-    env.Append(CCFLAGS='-fopenmp')
-    env.Append(LINKFLAGS = '-fopenmp')
     program_ending = '.out'
 elif sys.platform == 'win32' or sys.platform == 'msys':
-    env.Append(CCFLAGS='/openmp')
     env.Append(CCFLAGS='/EHsc')
     program_ending = '.exe'
 else:

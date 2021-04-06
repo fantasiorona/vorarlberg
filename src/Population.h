@@ -29,7 +29,7 @@ class Population {
 
     // Evolve all generations and print intermediate results
     void evolve(std::function<void(std::vector<T> &)> initialization_function,
-                std::function<double(std::vector<T>)> evaluation_function,
+                std::function<double(std::vector<T> &)> evaluation_function,
                 std::function<void(std::vector<T> &, double)> mutation_function,
                 std::function<void(std::vector<T> &, std::vector<T> &)> crossover_function) {
 
@@ -236,7 +236,7 @@ class Population {
     /// Evaluates the fitness of all genotypes using the given evaluation function, which takes a
     /// gene as a parameter and returns the fitness. The results are saved in the `fitness` field of
     /// each genotype.
-    void evaluate_all_fitnesses(std::function<double(std::vector<T>)> evaluation_function) {
+    void evaluate_all_fitnesses(std::function<double(std::vector<T> &)> evaluation_function) {
         for (Genotype<T> &genotype : genotypes) {
             genotype.fitness = evaluation_function(genotype.genes);
         }
@@ -254,8 +254,7 @@ class Population {
 
     // Mutate random genes of all genotypes.
     void mutate_population(std::function<void(std::vector<T> &, double)> mutation_function) {
-// Iterate over all genes in every genotype
-#pragma omp parallel for
+        // Iterate over all genes in every genotype
         for (int i = 0; i < size; i++) {
             mutation_function(genotypes[i].genes, mutation_probability);
         }
@@ -270,8 +269,7 @@ class Population {
             fitness_sum = fitness_sum + genotypes[i].fitness;
         }
 
-// Calculate the relative fitness of each member and save it
-#pragma omp parallel for
+        // Calculate the relative fitness of each member and save it
         for (int i = 0; i < size; i++) {
             genotypes[i].relative_fitness = genotypes[i].fitness / fitness_sum;
         }
@@ -302,8 +300,7 @@ class Population {
             }
         }
 
-// Overwrite the old population with the new one
-#pragma omp parallel for
+        // Overwrite the old population with the new one
         for (int i = 0; i < size; i++) {
             genotypes[i] = new_genotypes[i];
         }
