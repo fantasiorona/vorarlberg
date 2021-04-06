@@ -1,6 +1,5 @@
-#pragma once
-
 #include "Genotype.h"
+
 #include <fstream>
 #include <functional>
 #include <iomanip>
@@ -42,7 +41,7 @@ class Population {
         evaluate_all_fitnesses(evaluation_function);
         remember_best_genotype();
 
-        for (int generation = 0; generation < max_generations; generation++) {
+        for (unsigned int generation = 0; generation < max_generations; generation++) {
             create_new_population();
             crossover_population(crossover_function);
             mutate_population(mutation_function);
@@ -133,7 +132,7 @@ class Population {
         lower_gene_bound.resize(variable_count);
         upper_gene_bound.resize(variable_count);
         // Parse and set bounds
-        for (int i = 0; i < variable_count; i++) {
+        for (unsigned  int i = 0; i < variable_count; i++) {
             T lower_bound;
             T upper_bound;
 
@@ -166,7 +165,7 @@ class Population {
         int current_match;
         int match_count = 0;
 
-        for (int current_genotype = 0; current_genotype < size; ++current_genotype) {
+        for (unsigned int current_genotype = 0; current_genotype < size; ++current_genotype) {
             // Pick a random number for testing against the pre-defined crossover probability
             double x = GetRandomNormalizedDouble();
 
@@ -200,7 +199,7 @@ class Population {
         double worst_fitness = genotypes[0].fitness;
 
         // Find the best and the worst genotypes
-        for (int i = 0; i < size - 1; ++i) {
+        for (unsigned int i = 0; i < size - 1; ++i) {
             if (genotypes[i + 1].fitness < genotypes[i].fitness) {
                 if (genotypes[i].fitness >= best_fitness) {
                     best_fitness = genotypes[i].fitness;
@@ -255,7 +254,7 @@ class Population {
     // Mutate random genes of all genotypes.
     void mutate_population(std::function<void(std::vector<T> &, double)> mutation_function) {
         // Iterate over all genes in every genotype
-        for (int i = 0; i < size; i++) {
+        for (unsigned int i = 0; i < size; i++) {
             mutation_function(genotypes[i].genes, mutation_probability);
         }
     }
@@ -265,30 +264,30 @@ class Population {
     void create_new_population() {
         // Find the total fitness of the population
         double fitness_sum = 0.0;
-        for (int i = 0; i < size; i++) {
+        for (unsigned int i = 0; i < size; i++) {
             fitness_sum = fitness_sum + genotypes[i].fitness;
         }
 
         // Calculate the relative fitness of each member and save it
-        for (int i = 0; i < size; i++) {
+        for (unsigned int i = 0; i < size; i++) {
             genotypes[i].relative_fitness = genotypes[i].fitness / fitness_sum;
         }
 
         // Calculate the cumulative fitness of each member and save it
         genotypes[0].cumulative_fitness = genotypes[0].relative_fitness;
-        for (int i = 1; i < size; i++) {
+        for (unsigned int i = 1; i < size; i++) {
             genotypes[i].cumulative_fitness =
                 genotypes[i - 1].cumulative_fitness + genotypes[i].relative_fitness;
         }
 
         // Select survivors using the cumulative fitnesses
-        for (int i = 0; i < size; i++) {
+        for (unsigned int i = 0; i < size; i++) {
             double p = GetRandomNormalizedDouble();
 
             if (genotypes[0].cumulative_fitness > p) {
                 new_genotypes[i] = genotypes[0];
             } else {
-                for (int j = 0; j < size - 1; j++) {
+                for (unsigned int j = 0; j < size - 1; j++) {
                     // If this genotypes' cumulative fitness is small, but the next one's is large,
                     // that means the next one caused a significant increase --> add it to the new
                     // genotypes
@@ -301,7 +300,7 @@ class Population {
         }
 
         // Overwrite the old population with the new one
-        for (int i = 0; i < size; i++) {
+        for (unsigned int i = 0; i < size; i++) {
             genotypes[i] = new_genotypes[i];
         }
     }
@@ -318,7 +317,7 @@ class Population {
         double sum = 0.0;
         double sum_square = 0.0;
 
-        for (int i = 0; i < size; i++) {
+        for (unsigned int i = 0; i < size; i++) {
             sum = sum + genotypes[i].fitness;
             sum_square = sum_square + genotypes[i].fitness * genotypes[i].fitness;
         }
