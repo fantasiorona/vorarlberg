@@ -1,10 +1,8 @@
-#include "Genotype.h"
 #include "Population.h"
+
 #include <algorithm>
 #include <chrono>
-#include <fstream>
 #include <map>
-#include <vector>
 
 void print_magic_square(std::vector<int> &values);
 void print_genes(std::vector<int> &values);
@@ -195,7 +193,7 @@ void initialze_genotype(std::vector<int> &genes) {
     int variableAmount = genes.size();
     std::vector<bool> usedValues(variableAmount, false);
     // Set the genes to random numbers
-    for (int gene = 0; gene < genes.size(); gene++) {
+    for (int gene = 0; gene < variableAmount; gene++) {
         int value = population.GetRandomGeneValue(gene);
         // counting up if value is already in use, so we never get duplicate values
         while (usedValues[value - 1]) {
@@ -215,7 +213,6 @@ void mutate_genotype(std::vector<int> &genes, double mutationProbability) {
     for (int j = 0; j < variableAmount; ++j) {
         // random chance to mutate gene
         double x = population.GetRandomNormalizedDouble();
-        int newValue = 0;
         if (x < mutationProbability) {
             int swapIndex = population.GetRandomGeneValue(0) - 1;
             // make sure we dont swap in place
@@ -310,7 +307,7 @@ void crossover_genotypes(std::vector<int> &genes1, std::vector<int> &genes2) {
 }
 
 void print_genes(std::vector<int> &values) {
-    for (int i = 0; i < values.size(); ++i) {
+    for (unsigned int i = 0; i < values.size(); ++i) {
         if (values[i] < 0) {
             std::cout << "X, ";
         } else {
@@ -349,7 +346,7 @@ void print_magic_square(std::vector<int> &values) {
               << std::endl;
 
     int semiMagicCorrectSums = 0;
-    for (int row = 0; row < values.size(); row += dimension) {
+    for (unsigned int row = 0; row < values.size(); row += dimension) {
         int sum = 0;
         for (int col = 0; col < dimension; ++col) {
             int curValue = values[row + col];
@@ -382,7 +379,7 @@ void print_magic_square(std::vector<int> &values) {
     std::cout << std::endl;
     for (int col = 0; col < dimension; ++col) {
         int sum = 0;
-        for (int row = 0; row < values.size(); row += dimension) {
+        for (unsigned int row = 0; row < values.size(); row += dimension) {
             int curValue = values[row + col];
             sum += curValue;
         }
