@@ -25,7 +25,7 @@ const int maxGenerations = 1000000000;
 const int populationSize = 20;
 const float crossoverChance = 0.8;
 const float mutationChance = 0.05;
-const std::string file = "inputs/normal_dimension_8.txt";
+const std::string file = "inputs/normal_dimension_5.txt";
 int dimension = 5;
 // Create a new Population with genes consisting of three `double` variables
 // global because we use it the mutation function
