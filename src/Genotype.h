@@ -1,5 +1,3 @@
-#pragma once
-
 #include <vector>
 
 /// A single member of a population
