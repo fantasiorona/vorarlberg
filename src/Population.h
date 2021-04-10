@@ -31,7 +31,8 @@ class Population {
     void evolve(std::function<void(std::vector<T> &)> initialization_function,
                 std::function<double(std::vector<T> &)> evaluation_function,
                 std::function<void(std::vector<T> &, double)> mutation_function,
-                std::function<void(std::vector<T> &, std::vector<T> &)> crossover_function) {
+                std::function<void(std::vector<T> &, std::vector<T> &)> crossover_function,
+                unsigned int perfect_fitness) {
 
         // moved this here because to define initialization_function we need functionality from
         // population object, so we can't do it in constructor
@@ -49,6 +50,8 @@ class Population {
             report(generation);
             evaluate_all_fitnesses(evaluation_function);
             elitist();
+
+            if (current_best_genotype.fitness == perfect_fitness) return;
         }
     }
 

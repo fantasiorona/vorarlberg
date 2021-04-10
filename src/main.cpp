@@ -21,17 +21,17 @@ std::vector<int> crossoverInverseSequence2;
 std::vector<int> crossoverPositionSequence1;
 std::vector<int> crossoverPositionSequence2;
 void crossover_genotypes(std::vector<int> &, std::vector<int> &);
-const int maxGenerations = 1000000;
-const int populationSize = 25;
-const float crossoverChance = 0.7;
-const float mutationChance = 0.1;
-const std::string file = "inputs/normal_dimension_5.txt";
+const int maxGenerations = 1000000000;
+const int populationSize = 20;
+const float crossoverChance = 0.8;
+const float mutationChance = 0.05;
+const std::string file = "inputs/normal_dimension_8.txt";
 int dimension = 5;
 // Create a new Population with genes consisting of three `double` variables
 // global because we use it the mutation function
 // yes this is spaghetti code
 Population<int> population(file, maxGenerations, populationSize, crossoverChance, mutationChance);
-int main() {
+int main(int argc, char **argv) {
     auto start = std::chrono::high_resolution_clock::now();
 
     // Uncomment to create input files
@@ -55,8 +55,22 @@ int main() {
     crossoverPositionSequence2.resize(variableCount);
 
     // Evolve the population to maximize the given equation
-    population.evolve(initialze_genotype, evaluate_for_inlaid_semi_magic_square, mutate_genotype,
-                      crossover_genotypes);
+    if (std::stoi(argv[1]) == 1) {
+        // Solve for normal semi-magic square
+        population.evolve(initialze_genotype, evaluate_for_semi_magic_square, mutate_genotype,
+                          crossover_genotypes, dimension * 2);
+    } else if (std::stoi(argv[1]) == 2) {
+        // Solve for pandiagonal magic square
+        population.evolve(initialze_genotype, evaluate_for_pandiagonal_magic_square,
+                          mutate_genotype, crossover_genotypes, dimension * 4);
+    } else if (std::stoi(argv[1]) == 3) {
+        // Solve for inlaid magic square
+        population.evolve(initialze_genotype, evaluate_for_inlaid_semi_magic_square,
+                          mutate_genotype, crossover_genotypes,
+                          dimension * 2 + (dimension - 2) * 2);
+    } else {
+        std::cerr << "Unknown mode: " << argv[1] << std::endl;
+    }
     // population.print_result();
 
     // Print the result

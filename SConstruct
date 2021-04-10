@@ -6,7 +6,7 @@ env = DefaultEnvironment(tools=['default', 'compilation_db'])
 env.CompilationDatabase()
 
 if sys.platform.startswith('linux'):
-    env.Append(CCFLAGS=['-g', '-O2'])
+    env.Append(CCFLAGS=['-g', '-O3'])
     program_ending = '.out'
 elif sys.platform == 'darwin':
     env.Append(CCFLAGS='-g')
