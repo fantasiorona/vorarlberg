@@ -127,7 +127,19 @@ std::function<double(CitySequence &)> get_evaluation_function(std::map<int, int>
     };
 }
 
-void initialize_genotype(CitySequence &genes) {
+std::function<void(CitySequence &)>
+get_initialization_function(std::map<int, std::vector<size_t>> cluster, VisitedCity first_city) {
+    return [cluster, first_city](CitySequence &genes) {
+        for (const auto &entry : cluster) {
+            // choose random index for multiple options
+            int idx = (entry.second.size() == 1) ? 0 : rand() % entry.second.size();
+            // genome.insert(entry.second[idx]);
+            genes.push_back(entry.second[idx]);
+        }
+
+        std::random_shuffle(genes.begin() + (-1 != first_city),
+                            genes.end()); // don't shuffle starting point if given
+    };
 }
 
 // Declared here so they're re-used in each crossover sequenc
