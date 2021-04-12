@@ -95,6 +95,7 @@ int main (int argc, char * argv[])
     size_t iterations = 1; //200;    // extends the population for every iteration?
     size_t populationSize = 20; // how many different routes are used
     int mutationRate = 5;       // percentage of which a mutation should happen
+    int crossoverRate = 70;     // percentage of how often crossover should happen
     bool circle = false;        // flag wheter traveling from last good back to first should happen
     std::set<int> goods;        // provided goods to buy on tour
     int startIdx = -1;          // starting point index for route, if not provided just start from first good
@@ -109,6 +110,8 @@ int main (int argc, char * argv[])
         else if (strcmp(argv[i], "-i") == 0) iterations = std::stoi(argv[++i]);
         else if (strcmp(argv[i], "-p") == 0) populationSize = std::stoi(argv[++i]);
         else if (strcmp(argv[i], "-c") == 0) circle = true;
+        else if (strcmp(argv[i], "-m") == 0) mutationRate = std::stoi(argv[++i]);
+        else if (strcmp(argv[i], "-x") == 0) crossoverRate = std::stoi(argv[++i]);
         else if (strcmp(argv[i], "--from") == 0)
         {
             try
