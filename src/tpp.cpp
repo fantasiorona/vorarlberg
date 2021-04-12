@@ -213,6 +213,23 @@ void crossover_genotypes(CitySequence &genes1, CitySequence &genes2) {
 }
 
 void mutate_genotype(CitySequence &genes, double mutation_probability) {
+    int variable_amount = genes.size();
+
+    // iterating over each gene
+    for (int j = 0; j < variable_amount; ++j) {
+        // random chance to mutate gene
+        double x = 0.0; // FIXME: `population.GetRandomNormalizedDouble();`
+
+        if (x < mutation_probability) {
+            int swapIndex = 1; // FIXME: `population.GetRandomGeneValue(0) - 1;`
+            // make sure we dont swap in place
+            while (swapIndex == j) {
+                ++swapIndex;
+                if (swapIndex == variable_amount + 1) swapIndex = 1;
+            }
+            std::swap(genes[j], genes[swapIndex]);
+        }
+    }
 }
 
 int main(int argc, char *argv[]) {
