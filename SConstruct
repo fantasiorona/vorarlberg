@@ -19,7 +19,7 @@ else:
     exit(-1)
 
 shared_files = ["src/Population.h", "src/Genotype.h"]
-ms_files = ["src/main.cpp"]
+ms_files = ["src/ms.cpp"]
 tpp_files = ["src/tpp.cpp", "src/utility.h"]
 
 Program('ms' + program_ending, shared_files + ms_files)
