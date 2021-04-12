@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <ctime>
 #include <fstream>
 #include <iostream>
 #include <map>
@@ -38,7 +39,7 @@ std::vector<city> cities;
 
 int minRoute (const city *a, const city *b)
 {
-    int minRoute = 0;
+    int minRoute = 0; // a->good;
     std::vector<const city *> visited; // mark already visited nodes
     std::multimap<int, const city* > weights; // store distances in sorted map, allows duplicate keys
     do
@@ -48,7 +49,9 @@ int minRoute (const city *a, const city *b)
         {
             if (std::find(visited.begin(), visited.end(), &cities[road.to]) == visited.end())
             {
-                weights.insert(std::make_pair(road.distance + minRoute, &cities[road.to])); // put on heap
+                // put min distances on heap
+                //weights.insert(std::make_pair(minRoute + road.distance, &cities[road.to])); // without buying goods on visited cities
+                weights.insert(std::make_pair(minRoute + road.distance + cities[road.to].good, &cities[road.to]));
             }
         }
 
