@@ -34,9 +34,6 @@ goods
 - necessary to provide a starting point or just start from city with first good to purchase?
     --> allow providing a start city cmd argument with --from <idx> or <cityname>
 
-# TODO:
-- name vectors for more readability: typedef std::vector<size_t> genome;
-
 
 
 # examples:
@@ -83,6 +80,7 @@ for genome:         2, 10, 11, 12, 14, 17, 18
 #include "utility.h"
 
 #include <cstring>
+#include <functional>
 #include <set>
 #include <unordered_set>
 
@@ -94,6 +92,47 @@ for genome:         2, 10, 11, 12, 14, 17, 18
 // 0000 0110    0000 1010 -> 1546 in dec
 #define KEY_UPPER 8    // 8 bitshift is enough for 255 nodes, we only have 20
 #define KEY_LOWER 0xFF // pow(2, KEY_UPPER)
+
+typedef std::vector<size_t> CitySequence;
+
+void print_sequence(CitySequence &values) {
+}
+
+std::function<double(CitySequence &)> get_evaluation_function(std::map<int, int> &city_distances,
+                                                              bool circle) {
+    return [city_distances, circle](CitySequence &genes) {
+        int sum = 0, from, to;
+
+        std::vector<size_t>::iterator it_to;
+        for (auto it_from = genes.begin(); it_from != genes.end(); ++it_from) {
+            from = *it_from;
+            it_to = std::next(it_from, 1);
+            if (it_to == genes.end()) {
+                if (false == circle) break;
+
+                // if purchaser has to travel back to start add closest distance
+                it_to = genes.begin();
+            }
+
+            to = *it_to;
+            if (from > to)
+                std::swap(from, to); // assure ascending direction to find in distance map
+
+            sum += city_distances.at(from << KEY_UPPER | to);
+        }
+
+        return sum;
+    };
+}
+
+void initialize_genotype(CitySequence &genes) {
+}
+
+void crossover_genotypes(CitySequence &genes1, CitySequence &genes2) {
+}
+
+void mutate_genotype(CitySequence &genes, double mutation_probability) {
+}
 
 int main(int argc, char *argv[]) {
     size_t iterations = 1;      // 200;    // extends the population for every iteration?
@@ -150,7 +189,7 @@ int main(int argc, char *argv[]) {
     for (const auto &city : cities) {
         std::cout << "  " << idx++ << ": " << city.name << " (good: " << city.good
                   << ") with roads (" << city.roads.size() << "): " << std::endl;
-        for (road road : city.roads) {
+        for (Road road : city.roads) {
             std::cout << "\t" << cities[road.to].name << ": " << road.distance << std::endl;
         }
     }
