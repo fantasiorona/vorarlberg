@@ -18,6 +18,9 @@ else:
     host_platform = "Unknown platform: " + sys.platform
     exit(-1)
 
-target_name = 'ms' + program_ending
+shared_files = ["src/Population.h", "src/Genotype.h"]
+ms_files = ["src/main.cpp"]
+tpp_files = ["src/tpp.cpp", "src/utility.h"]
 
-Program(target_name, Glob('src/*.cpp'))
+Program('ms' + program_ending, shared_files + ms_files)
+Program('tpp' + program_ending, shared_files + tpp_files)
