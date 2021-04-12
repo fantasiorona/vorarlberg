@@ -98,6 +98,11 @@ typedef size_t VisitedCity;
 typedef std::vector<VisitedCity> CitySequence;
 
 void print_sequence(CitySequence &values) {
+    // TODO: Consider printing names rather than indices?
+    for (size_t value : values) {
+        std::cout << value << ", ";
+    }
+    std::cout << std::endl;
 }
 
 std::function<double(CitySequence &)> get_evaluation_function(std::map<int, int> &city_distances,
