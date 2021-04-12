@@ -11,14 +11,14 @@ double evaluate_for_semi_magic_square(std::vector<int> &genes);
 double evaluate_for_pandiagonal_magic_square(std::vector<int> &genes);
 double evaluate_for_inlaid_semi_magic_square(std::vector<int> &genes);
 void initialze_genotype(std::vector<int> &genes);
-void mutate_genotype(std::vector<int> &genes, double mutationProbability);
+void mutate_genotype(std::vector<int> &genes, double mutationProbability, Population<int> &);
 
 // creating vectors here so we dont have to do it in each crossover function
 std::vector<int> crossoverInverseSequence1;
 std::vector<int> crossoverInverseSequence2;
 std::vector<int> crossoverPositionSequence1;
 std::vector<int> crossoverPositionSequence2;
-void crossover_genotypes(std::vector<int> &, std::vector<int> &);
+void crossover_genotypes(std::vector<int> &, std::vector<int> &, Population<int> &);
 const int maxGenerations = 1000000000;
 const int populationSize = 20;
 const float crossoverChance = 0.8;
@@ -221,7 +221,7 @@ void initialze_genotype(std::vector<int> &genes) {
 
 // This only handles normal magic square
 // TODO: also implement for non normal magic squares
-void mutate_genotype(std::vector<int> &genes, double mutationProbability) {
+void mutate_genotype(std::vector<int> &genes, double mutationProbability, Population<int> &) {
     int variableAmount = genes.size();
     // iterating over each gene
     for (int j = 0; j < variableAmount; ++j) {
@@ -242,7 +242,7 @@ void mutate_genotype(std::vector<int> &genes, double mutationProbability) {
 // Adapted from https://github.com/guisehn/genetic-magic-square-finder
 // TODO: maybe put inverse and position vectors in a twodimensional vector so we reduce code
 // duplication
-void crossover_genotypes(std::vector<int> &genes1, std::vector<int> &genes2) {
+void crossover_genotypes(std::vector<int> &genes1, std::vector<int> &genes2, Population<int> &) {
     // calculate inversion sequences
     int geneAmount = genes1.size();
     // inverse sequence counts the amount of bigger values to the left of the current value and

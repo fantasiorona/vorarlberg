@@ -128,7 +128,9 @@ std::function<double(CitySequence &)> get_evaluation_function(std::map<int, int>
             sum += city_distances.at(from << KEY_UPPER | to);
         }
 
-        return sum;
+        // Return the negative sum because a higher fitness is considered better --> we're
+        // optimizing towards 0
+        return -sum;
     };
 }
 
@@ -238,7 +240,7 @@ void mutate_genotype(CitySequence &genes, double mutation_probability,
     // iterating over each gene
     for (int j = 0; j < variable_amount; ++j) {
         // random chance to mutate gene
-        double x = 0.0; // FIXME: `population.GetRandomNormalizedDouble();`
+        double x = population.GetRandomNormalizedDouble();
 
         if (x < mutation_probability) {
             int swapIndex = population.GetRandomGeneValue(0) - 1;
@@ -369,8 +371,8 @@ int main(int argc, char *argv[]) {
 
     // calculate distance for cluster nodes (could be done hardcoded because we only use the
     // romaniaroads data file)
-    std::map<int, int> nodeDistances; // key is bitwise combination of node indices, only storing
-                                      // one direction (smaller index to bigger)
+    std::map<int, int> node_distances; // key is bitwise combination of node indices, only storing
+                                       // one direction (smaller index to bigger)
     // omg noooe what am i doin? oO
     // TODO: double iterate cities, starting inner loop at current outer loop index, using only
     // relevant nodes and discarding same goods
@@ -385,124 +387,32 @@ int main(int argc, char *argv[]) {
 
                     int key = (from << KEY_UPPER | to);
                     int distance = minRoute(&cities[from], &cities[to]);
-                    nodeDistances.insert(std::make_pair(key, distance));
+                    node_distances.insert(std::make_pair(key, distance));
                 }
             }
         }
     }
 
 #ifdef VERBOSE
-    std::cout << "calculated distances (" << nodeDistances.size()
+    std::cout << "calculated distances (" << node_distances.size()
               << "):" << std::endl; // should be "factorial for sums" - cities with the same good
-    for (const auto &dist : nodeDistances) {
+    for (const auto &dist : node_distances) {
         std::cout << "  " << (dist.first >> KEY_UPPER) << " - " << (dist.first & KEY_LOWER) << " = "
                   << dist.first << ": " << cities[dist.first >> KEY_UPPER].name << " - "
                   << cities[dist.first & KEY_LOWER].name << ": " << dist.second << std::endl;
     }
 #endif
 
-    // 3. generate initial purchase order
-    // --------------------------------------------------------------------------------------------------------------------------------------------------------
-    // std::vector<std::unordered_set<size_t>> population; // should use a set for intentional
-    // reasoning, but then all the shuffle algorithms would not work :/
-    std::vector<std::vector<size_t>> population;
-    // TODO: use rng generator class
-    static bool init = false;
-    if (false == init) {
-        init = true;
-        srand((size_t)time(NULL));
-    }
+    // FIXME: It'd be unnecessary to pass a file with min/max values here. Give the option of
+    // initializing min/max to set values for all Genotypes!
+    Population<VisitedCity> population("", 500, populationSize,
+                                       static_cast<float>(crossoverRate) / 100.0,
+                                       static_cast<float>(mutationRate) / 100.0);
 
-    for (size_t i = 0; i < populationSize; ++i) {
-        // std::unordered_set<size_t> genome;
-        std::vector<size_t> genome;
-        for (const auto &entry : cluster) {
-            // choose random index for multiple options
-            int idx = (entry.second.size() == 1) ? 0 : rand() % entry.second.size();
-            // genome.insert(entry.second[idx]);
-            genome.push_back(entry.second[idx]);
-        }
+    // Fitnesses are negative, so 0 (meaning no distance is traversed at all) would be ideal
+    population.evolve(get_initialization_function(cluster, startIdx),
+                      get_evaluation_function(node_distances, circle), mutate_genotype,
+                      crossover_genotypes, 0);
 
-        // population.push_back(shuffle(genome));
-        std::random_shuffle(genome.begin() + (-1 != startIdx),
-                            genome.end()); // don't shuffle starting point if given
-        population.push_back(genome);
-    }
-
-    // TEST for all given goods:
-    // population.push_back({ 14, 12, 19, 18, 11, 10, 4 }); // 1448
-    // population.push_back({ 0, 1, 2, 10, 12, 14, 15 }); // 751
-    // population.push_back({ 2, 10, 11, 12, 14, 17, 18 }); // 597
-    // populationSize = population.size();
-
-#ifdef VERBOSE
-    std::cout << "initial population (" << populationSize << "):" << std::endl;
-    for (const auto &pop : population) {
-        std::cout << "  ";
-        for (int idx : pop) {
-            std::cout << idx << ", ";
-        }
-        std::cout << std::endl;
-    }
-#endif
-
-    // 4. calculate amount of given iterations (or stop if optimum was found)
-    //      - calculate fitness
-    //      - select routes with best fitness       -> TODO
-    //      - crossover best routes                 -> TODO
-    //      - mutate a small percentage             -> TODO
-    // --------------------------------------------------------------------------------------------------------------------------------------------------------
-    std::vector<int> fitness(populationSize); // TODO: should be property of population entry
-    std::cout << "TODO: handle mutation rate " << mutationRate << std::endl;
-    std::cout << "iterating " << iterations << " times..." << std::endl;
-    int min = INT16_MAX;
-    std::vector<size_t> superiorAlphaGenom;
-    for (size_t i = 0; i < iterations; ++i) {
-        for (size_t p = 0; p < populationSize; ++p) {
-            // calculating fitness
-            int sum = 0, from, to;
-            std::vector<size_t>::iterator it_to;
-            for (auto it_from = population[p].begin(); it_from != population[p].end(); ++it_from) {
-                from = *it_from;
-                it_to = std::next(it_from, 1);
-                if (it_to == population[p].end()) {
-                    if (false == circle) break;
-
-                    // if purchaser has to travel back to start add closest distance
-                    it_to = population[p].begin();
-                }
-
-                to = *it_to;
-                if (from > to)
-                    std::swap(from, to); // assure ascending direction to find in distance map
-
-                sum += nodeDistances[(from << KEY_UPPER | to)];
-            }
-            fitness[p] = sum;
-            if (sum < min) {
-                min = sum;
-                superiorAlphaGenom = population[p];
-            }
-        }
-    }
-
-    // 5. output best route
-    // --------------------------------------------------------------------------------------------------------------------------------------------------------
-    /*std::cout << "calculated fitnesses:" << std::endl;
-    min = fitness[0];
-    for (int fit : fitness)
-    {
-        if (fit < min) min = fit;
-        std::cout << fit << std::endl;
-    }*/
-    std::cout << "minimum distance: " << min << std::endl;
-    std::cout << "for genome: ";
-    for (int chromosome : superiorAlphaGenom) {
-        std::cout << chromosome << ", ";
-    }
-    if (circle) {
-        std::cout << superiorAlphaGenom[0];
-    }
-    std::cout << std::endl;
     return 0;
 }

@@ -27,11 +27,12 @@ class Population {
     }
 
     // Evolve all generations and print intermediate results
-    void evolve(std::function<void(std::vector<T> &)> initialization_function,
-                std::function<double(std::vector<T> &)> evaluation_function,
-                std::function<void(std::vector<T> &, double)> mutation_function,
-                std::function<void(std::vector<T> &, std::vector<T> &)> crossover_function,
-                unsigned int perfect_fitness) {
+    void evolve(
+        std::function<void(std::vector<T> &)> initialization_function,
+        std::function<double(std::vector<T> &)> evaluation_function,
+        std::function<void(std::vector<T> &, double, Population<T> &)> mutation_function,
+        std::function<void(std::vector<T> &, std::vector<T> &, Population<T> &)> crossover_function,
+        unsigned int perfect_fitness) {
 
         // moved this here because to define initialization_function we need functionality from
         // population object, so we can't do it in constructor
@@ -163,8 +164,9 @@ class Population {
     }
 
     /// Iterates through the population and crosses over randomly selected pairs.
-    void crossover_population(
-        std::function<void(std::vector<T> &, std::vector<T> &)> crossover_function) {
+    void
+    crossover_population(std::function<void(std::vector<T> &, std::vector<T> &, Population<T> &)>
+                             crossover_function) {
         int current_match;
         int match_count = 0;
 
@@ -186,10 +188,11 @@ class Population {
     }
 
     /// Performs a crossover on the two given parents.
-    void crossover(std::function<void(std::vector<T> &, std::vector<T> &)> crossover_function,
-                   int one, int two) {
+    void crossover(
+        std::function<void(std::vector<T> &, std::vector<T> &, Population<T> &)> crossover_function,
+        int one, int two) {
         // Randomly select the point until which the crossover will be performed
-        crossover_function(genotypes[one].genes, genotypes[two].genes);
+        crossover_function(genotypes[one].genes, genotypes[two].genes, *this);
     }
 
     // Elitist function: find the best and worse genotypes, remember the best, and replace the worst
@@ -255,10 +258,11 @@ class Population {
     }
 
     // Mutate random genes of all genotypes.
-    void mutate_population(std::function<void(std::vector<T> &, double)> mutation_function) {
+    void mutate_population(
+        std::function<void(std::vector<T> &, double, Population<T> &)> mutation_function) {
         // Iterate over all genes in every genotype
         for (unsigned int i = 0; i < size; i++) {
-            mutation_function(genotypes[i].genes, mutation_probability);
+            mutation_function(genotypes[i].genes, mutation_probability, *this);
         }
     }
 
