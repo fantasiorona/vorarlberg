@@ -77,6 +77,7 @@ for genome:         2, 10, 11, 12, 14, 17, 18
 
 ==============================================================================================*/
 
+#include "Population.h"
 #include "utility.h"
 
 #include <cstring>
@@ -93,7 +94,8 @@ for genome:         2, 10, 11, 12, 14, 17, 18
 #define KEY_UPPER 8    // 8 bitshift is enough for 255 nodes, we only have 20
 #define KEY_LOWER 0xFF // pow(2, KEY_UPPER)
 
-typedef std::vector<size_t> CitySequence;
+typedef size_t VisitedCity;
+typedef std::vector<VisitedCity> CitySequence;
 
 void print_sequence(CitySequence &values) {
 }
@@ -133,7 +135,8 @@ std::vector<int> crossover_inverse_sequence1;
 std::vector<int> crossover_inverse_sequence2;
 std::vector<int> crossover_position_sequence1;
 std::vector<int> crossover_position_sequence2;
-void crossover_genotypes(CitySequence &genes1, CitySequence &genes2) {
+void crossover_genotypes(CitySequence &genes1, CitySequence &genes2,
+                         Population<VisitedCity> &population) {
     // calculate inversion sequences
     int gene_amount = genes1.size();
     // inverse sequence counts the amount of bigger values to the left of the current value and
@@ -177,9 +180,8 @@ void crossover_genotypes(CitySequence &genes1, CitySequence &genes2) {
         }
     }
     // crossover afterwards is a simple swap operation with a randomly defined cutoff point
-    int cutoff_point = 1; // FIXME: Should be `population.GetRandomGeneValue(0) - 1;` but I want to
-                          // avoid a global population
-    for (int i = cutoff_point; i < gene_amount; ++i) {
+    size_t cutoff_point = population.GetRandomGeneValue(0) - 1;
+    for (size_t i = cutoff_point; i < gene_amount; ++i) {
         std::swap(crossover_inverse_sequence1[i], crossover_inverse_sequence2[i]);
     }
     // translate back to actual genes
@@ -212,7 +214,8 @@ void crossover_genotypes(CitySequence &genes1, CitySequence &genes2) {
     }
 }
 
-void mutate_genotype(CitySequence &genes, double mutation_probability) {
+void mutate_genotype(CitySequence &genes, double mutation_probability,
+                     Population<VisitedCity> &population) {
     int variable_amount = genes.size();
 
     // iterating over each gene
@@ -221,7 +224,7 @@ void mutate_genotype(CitySequence &genes, double mutation_probability) {
         double x = 0.0; // FIXME: `population.GetRandomNormalizedDouble();`
 
         if (x < mutation_probability) {
-            int swapIndex = 1; // FIXME: `population.GetRandomGeneValue(0) - 1;`
+            int swapIndex = population.GetRandomGeneValue(0) - 1;
             // make sure we dont swap in place
             while (swapIndex == j) {
                 ++swapIndex;

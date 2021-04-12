@@ -135,7 +135,7 @@ class Population {
         lower_gene_bound.resize(variable_count);
         upper_gene_bound.resize(variable_count);
         // Parse and set bounds
-        for (unsigned  int i = 0; i < variable_count; i++) {
+        for (unsigned int i = 0; i < variable_count; i++) {
             T lower_bound;
             T upper_bound;
 
