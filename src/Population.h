@@ -26,6 +26,21 @@ class Population {
         random_gene_index = std::uniform_int_distribution<int>(0, variable_count - 1);
     }
 
+    Population(std::vector<T> allowed_values, unsigned int max_generations, unsigned int size,
+               double crossover_probability, double mutation_probability)
+        : max_generations(max_generations), size(size),
+          crossover_probability(crossover_probability), mutation_probability(mutation_probability),
+          mersenne_twister_engine(random_device()), random_normalized_double(0.0, 1.0),
+          allowed_values(allowed_values) {
+
+        genotypes.resize(size);
+        new_genotypes.resize(size);
+
+        // has to be initialized after parsing because variable_count only gets the correct value
+        // after the file is read
+        random_gene_index = std::uniform_int_distribution<int>(0, variable_count - 1);
+    }
+
     // Evolve all generations and print intermediate results
     void evolve(
         std::function<void(std::vector<T> &)> initialization_function,
@@ -84,12 +99,19 @@ class Population {
     // Return a random possible gene value at the given index, taking the lower and upper bounds
     // into account
     T GetRandomGeneValue(unsigned int index) {
-        // using round because otherwise upperbound will only be returned when we get exactly 1.0
-        // with GetRandomNormalizedDouble() when using int
-        // TODO: does this work with doubles?
-        return round(GetRandomNormalizedDouble() *
-                         (upper_gene_bound[index] - lower_gene_bound[index]) +
-                     lower_gene_bound[index]);
+        if (allowed_values.empty())
+            // using round because otherwise upperbound will only be returned when we get
+            // exactly 1.0 with GetRandomNormalizedDouble() when using int
+            // TODO: does this work with doubles?
+            return round(GetRandomNormalizedDouble() *
+                             (upper_gene_bound[index] - lower_gene_bound[index]) +
+                         lower_gene_bound[index]);
+        else {
+            // TODO: Should be renamed to GetRandomGeneIndex; otherwise this should return
+            // allowed_values[random_index] (but there's actually no use case for that atm)
+            int random_index = floor(GetRandomNormalizedDouble() * variable_count);
+            return random_index;
+        }
     }
 
   private:
@@ -97,7 +119,8 @@ class Population {
     std::vector<Genotype<T>> new_genotypes;
     Genotype<T> current_best_genotype;
 
-    /// Upper and lower bounds for the gene variables
+    /// Allowed gene variable values, or alternatively upper and lower bounds for the gene variables
+    std::vector<T> allowed_values;
     std::vector<T> upper_gene_bound;
     std::vector<T> lower_gene_bound;
 
@@ -150,7 +173,7 @@ class Population {
     }
 
     // Initialize Genotype genes to random values
-    void initialize_genotypes(std::function<void(std::vector<T> &)> initialization_function) {
+    void initialize_genotypes(std::function<void(std::vector<T> &)> &initialization_function) {
         for (Genotype<T> &genotype : genotypes) {
             genotype.set_variable_count(variable_count);
             initialization_function(genotype.genes);
@@ -164,9 +187,8 @@ class Population {
     }
 
     /// Iterates through the population and crosses over randomly selected pairs.
-    void
-    crossover_population(std::function<void(std::vector<T> &, std::vector<T> &, Population<T> &)>
-                             crossover_function) {
+    void crossover_population(std::function<void(std::vector<T> &, std::vector<T> &,
+                                                 Population<T> &)> &crossover_function) {
         int current_match;
         int match_count = 0;
 
@@ -188,9 +210,9 @@ class Population {
     }
 
     /// Performs a crossover on the two given parents.
-    void crossover(
-        std::function<void(std::vector<T> &, std::vector<T> &, Population<T> &)> crossover_function,
-        int one, int two) {
+    void crossover(std::function<void(std::vector<T> &, std::vector<T> &, Population<T> &)>
+                       &crossover_function,
+                   int one, int two) {
         // Randomly select the point until which the crossover will be performed
         crossover_function(genotypes[one].genes, genotypes[two].genes, *this);
     }
@@ -241,7 +263,7 @@ class Population {
     /// Evaluates the fitness of all genotypes using the given evaluation function, which takes a
     /// gene as a parameter and returns the fitness. The results are saved in the `fitness` field of
     /// each genotype.
-    void evaluate_all_fitnesses(std::function<double(std::vector<T> &)> evaluation_function) {
+    void evaluate_all_fitnesses(std::function<double(std::vector<T> &)> &evaluation_function) {
         for (Genotype<T> &genotype : genotypes) {
             genotype.fitness = evaluation_function(genotype.genes);
         }
@@ -259,7 +281,7 @@ class Population {
 
     // Mutate random genes of all genotypes.
     void mutate_population(
-        std::function<void(std::vector<T> &, double, Population<T> &)> mutation_function) {
+        std::function<void(std::vector<T> &, double, Population<T> &)> &mutation_function) {
         // Iterate over all genes in every genotype
         for (unsigned int i = 0; i < size; i++) {
             mutation_function(genotypes[i].genes, mutation_probability, *this);

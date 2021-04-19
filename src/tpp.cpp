@@ -198,8 +198,9 @@ void crossover_genotypes(CitySequence &genes1, CitySequence &genes2,
             }
         }
     }
+
     // crossover afterwards is a simple swap operation with a randomly defined cutoff point
-    size_t cutoff_point = population.GetRandomGeneValue(0) - 1;
+    size_t cutoff_point = population.GetRandomGeneValue(0);
     for (size_t i = cutoff_point; i < gene_amount; ++i) {
         std::swap(crossover_inverse_sequence1[i], crossover_inverse_sequence2[i]);
     }
@@ -243,7 +244,7 @@ void mutate_genotype(CitySequence &genes, double mutation_probability,
         double x = population.GetRandomNormalizedDouble();
 
         if (x < mutation_probability) {
-            int swapIndex = population.GetRandomGeneValue(0) - 1;
+            int swapIndex = population.GetRandomGeneValue(0);
             // make sure we dont swap in place
             while (swapIndex == j) {
                 ++swapIndex;
@@ -289,7 +290,7 @@ int main(int argc, char *argv[]) {
             }
         } else
             goods.insert(std::stoi(argv[i])); // remaining given values are interpreted as goods
-            // goods are names for cities -> using indices
+                                              // goods are names for cities -> using indices
     }
 
     // 2. read given data containing cities and streets
@@ -299,7 +300,8 @@ int main(int argc, char *argv[]) {
 
     size_t idx = 0;
 #ifdef VERBOSE
-    std::cout << "cities with connected roads (" << cities.size() << "), index is considered as provided good: " << std::endl;
+    std::cout << "cities with connected roads (" << cities.size()
+              << "), index is considered as provided good: " << std::endl;
     for (const auto &city : cities) {
         std::cout << "  " << idx++ << ": " << city.name << " (cost: " << city.good
                   << ") with roads (" << city.roads.size() << "): " << std::endl;
@@ -310,18 +312,20 @@ int main(int argc, char *argv[]) {
 #endif
 
     if (cities.size() < 1) {
-        std::cout << "no valid city network found, please contact your local administrator." << std::endl;
+        std::cout << "no valid city network found, please contact your local administrator."
+                  << std::endl;
         return 0;
     }
 
     while (goods.size() < 2) {
-        std::cout << "not enough goods provided to justify some work: " << goods.size() <<
-            " min: 2, given: " << goods.size() << std::endl <<
-            "please provide indices for cities (0 - " << (cities.size() - 1) << "): <idx1> <idx2> ..." << std::endl;
+        std::cout << "not enough goods provided to justify some work: " << goods.size()
+                  << " min: 2, given: " << goods.size() << std::endl
+                  << "please provide indices for cities (0 - " << (cities.size() - 1)
+                  << "): <idx1> <idx2> ..." << std::endl;
 
         std::string str = "";
         std::getline(std::cin, str);
-        std::vector<std::string>input = split(str, " ");
+        std::vector<std::string> input = split(str, " ");
         for (const std::string &idx_city : input) {
             goods.insert(std::stoi(idx_city));
         }
@@ -330,9 +334,9 @@ int main(int argc, char *argv[]) {
     // select cluster nodes which provide given goods
     idx = 0;
     std::map<int, std::vector<size_t>> cluster;
-    //for (const auto &city : cities) {
+    // for (const auto &city : cities) {
     for (size_t idx_city = 0; idx_city < cities.size(); ++idx_city) {
-        //if (std::find(goods.begin(), goods.end(), city.good) != goods.end()) {
+        // if (std::find(goods.begin(), goods.end(), city.good) != goods.end()) {
         if (std::find(goods.begin(), goods.end(), idx_city) != goods.end()) {
             if (cluster.count(idx_city)) {
                 cluster[idx_city].push_back(idx);
@@ -417,9 +421,21 @@ int main(int argc, char *argv[]) {
     }
 #endif
 
+    // Get list of allowed values (actually not really necessary because we only swap?)
+    std::vector<VisitedCity> allowed_values;
+    for (const auto &entry : cluster) {
+        allowed_values.emplace_back(entry.first);
+    }
+
+    // adjusting size according to variable count
+    crossover_inverse_sequence1.resize(allowed_values.size());
+    crossover_inverse_sequence2.resize(allowed_values.size());
+    crossover_position_sequence1.resize(allowed_values.size());
+    crossover_position_sequence2.resize(allowed_values.size());
+
     // FIXME: It'd be unnecessary to pass a file with min/max values here. Give the option of
     // initializing min/max to set values for all Genotypes!
-    Population<VisitedCity> population("", 500, populationSize,
+    Population<VisitedCity> population(allowed_values, 500, populationSize,
                                        static_cast<float>(crossoverRate) / 100.0,
                                        static_cast<float>(mutationRate) / 100.0);
 

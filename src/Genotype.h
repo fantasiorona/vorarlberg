@@ -1,10 +1,13 @@
+#include <limits>
 #include <vector>
 
 /// A single member of a population
 template <class T>
 class Genotype {
   public:
-    Genotype() : fitness(0.0), relative_fitness(0.0), cumulative_fitness(0.0) {
+    Genotype()
+        : fitness(-std::numeric_limits<float>::infinity()), relative_fitness(0.0),
+          cumulative_fitness(0.0) {
     }
 
     void set_variable_count(unsigned int variable_count) {
