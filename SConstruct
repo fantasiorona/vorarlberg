@@ -18,9 +18,8 @@ else:
     host_platform = "Unknown platform: " + sys.platform
     exit(-1)
 
-shared_files = ["src/Population.h", "src/Genotype.h"]
 ms_files = ["src/ms.cpp"]
-tpp_files = ["src/tpp.cpp", "src/utility.h"]
+tpp_files = ["src/tpp.cpp"]
 
-Program('ms' + program_ending, shared_files + ms_files)
-Program('tpp' + program_ending, shared_files + tpp_files)
+Program('ms' + program_ending, ms_files)
+Program('tpp' + program_ending, tpp_files)
