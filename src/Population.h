@@ -61,7 +61,7 @@ class Population {
         std::cout << "  Best member:\n";
         std::cout << "\n";
 
-        for (int i = 0; i < variable_count; i++) {
+        for (size_t i = 0; i < variable_count; i++) {
             std::cout << "  var(" << i << ") = " << current_best_genotype.genes[i] << "\n";
         }
 
