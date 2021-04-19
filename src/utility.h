@@ -85,12 +85,9 @@ const std::vector<City> &readInput(const std::string &path) {
     std::string line;
     std::string str_from, str_to;
     while (getline(file, line)) {
-        std::cout << "parsing line " << line;
-        if (line.find('%') == 0) // skipping comments
-        {
+        if (line.find('%') == 0) { // skipping comments
             continue;
-        } else if (line.length() < 3) // done at first empty line, only contains newline
-        {
+        } else if (line.length() < 3) { // done at first empty line, only contains newline
             break;
         }
 

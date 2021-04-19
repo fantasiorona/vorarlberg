@@ -135,8 +135,8 @@ std::function<double(CitySequence &)> get_evaluation_function(std::map<int, int>
 }
 
 std::function<void(CitySequence &)>
-get_initialization_function(std::map<int, std::vector<size_t>> cluster, VisitedCity first_city) {
-    return [cluster, first_city](CitySequence &genes) {
+get_initialization_function(std::map<int, std::vector<size_t>> cluster, int idx_first_city) {
+    return [cluster, idx_first_city](CitySequence &genes) {
         for (const auto &entry : cluster) {
             // choose random index for multiple options
             int idx = (entry.second.size() == 1) ? 0 : rand() % entry.second.size();
@@ -144,7 +144,7 @@ get_initialization_function(std::map<int, std::vector<size_t>> cluster, VisitedC
             genes.push_back(entry.second[idx]);
         }
 
-        std::random_shuffle(genes.begin() + (-1 != first_city),
+        std::random_shuffle(genes.begin() + (-1 != idx_first_city),
                             genes.end()); // don't shuffle starting point if given
     };
 }
@@ -157,7 +157,7 @@ std::vector<int> crossover_position_sequence2;
 void crossover_genotypes(CitySequence &genes1, CitySequence &genes2,
                          Population<VisitedCity> &population) {
     // calculate inversion sequences
-    int gene_amount = genes1.size();
+    size_t gene_amount = genes1.size();
     // inverse sequence counts the amount of bigger values to the left of the current value and
     // stores it at the corresponding index
     // so for example for the gene [2 3 4 5 1 6 7 8 9] we start with the value 1
@@ -168,14 +168,14 @@ void crossover_genotypes(CitySequence &genes1, CitySequence &genes2,
     // each gene variable
 
     // iterate over each value
-    for (int i = 0; i < gene_amount; ++i) {
+    for (size_t i = 0; i < gene_amount; ++i) {
         // initialize to zero
         crossover_inverse_sequence1[i] = 0;
         crossover_inverse_sequence2[i] = 0;
         bool found1 = false;
         bool found2 = false;
         // for each value we start at the left
-        for (int j = 0; j < gene_amount; ++j) {
+        for (size_t j = 0; j < gene_amount; ++j) {
             // and continue until we find the value
             if (!found1) {
                 // if we pass a bigger value we increment
@@ -213,7 +213,7 @@ void crossover_genotypes(CitySequence &genes1, CitySequence &genes2,
         crossover_position_sequence1[i] = crossover_inverse_sequence1[i];
         crossover_position_sequence2[i] = crossover_inverse_sequence2[i];
         // for each value to the right
-        for (int j = i + 1; j < gene_amount; ++j) {
+        for (size_t j = i + 1; j < gene_amount; ++j) {
             // increase if its bigger or equal
             if (crossover_position_sequence1[j] >= crossover_position_sequence1[i]) {
                 crossover_position_sequence1[j] = crossover_position_sequence1[j] + 1;
@@ -227,7 +227,7 @@ void crossover_genotypes(CitySequence &genes1, CitySequence &genes2,
 
     // actually create genes by using the position information to find the position of the value
     // add 1 because values are from 1-9 while vector indizes are from 0-8
-    for (int i = 0; i < gene_amount; ++i) {
+    for (size_t i = 0; i < gene_amount; ++i) {
         genes1[crossover_position_sequence1[i]] = i + 1;
         genes2[crossover_position_sequence2[i]] = i + 1;
     }
@@ -289,13 +289,7 @@ int main(int argc, char *argv[]) {
             }
         } else
             goods.insert(std::stoi(argv[i])); // remaining given values are interpreted as goods
-        // available goods for romaniaroads are (7): 4, 5, 6, 7, 8, 9, 13
-    }
-
-    if (goods.size() < 2) {
-        std::cout << "not enough goods provided to justify some work: " << goods.size() << " min: 2"
-                  << std::endl;
-        return 0;
+            // goods are names for cities -> using indices
     }
 
     // 2. read given data containing cities and streets
@@ -305,9 +299,9 @@ int main(int argc, char *argv[]) {
 
     size_t idx = 0;
 #ifdef VERBOSE
-    std::cout << "cities with connected roads (" << cities.size() << "): " << std::endl;
+    std::cout << "cities with connected roads (" << cities.size() << "), index is considered as provided good: " << std::endl;
     for (const auto &city : cities) {
-        std::cout << "  " << idx++ << ": " << city.name << " (good: " << city.good
+        std::cout << "  " << idx++ << ": " << city.name << " (cost: " << city.good
                   << ") with roads (" << city.roads.size() << "): " << std::endl;
         for (Road road : city.roads) {
             std::cout << "\t" << cities[road.to].name << ": " << road.distance << std::endl;
@@ -315,15 +309,35 @@ int main(int argc, char *argv[]) {
     }
 #endif
 
+    if (cities.size() < 1) {
+        std::cout << "no valid city network found, please contact your local administrator." << std::endl;
+        return 0;
+    }
+
+    while (goods.size() < 2) {
+        std::cout << "not enough goods provided to justify some work: " << goods.size() <<
+            " min: 2, given: " << goods.size() << std::endl <<
+            "please provide indices for cities (0 - " << (cities.size() - 1) << "): <idx1> <idx2> ..." << std::endl;
+
+        std::string str = "";
+        std::getline(std::cin, str);
+        std::vector<std::string>input = split(str, " ");
+        for (const std::string &idx_city : input) {
+            goods.insert(std::stoi(idx_city));
+        }
+    }
+
     // select cluster nodes which provide given goods
     idx = 0;
     std::map<int, std::vector<size_t>> cluster;
-    for (const auto &city : cities) {
-        if (std::find(goods.begin(), goods.end(), city.good) != goods.end()) {
-            if (cluster.count(city.good)) {
-                cluster[city.good].push_back(idx);
+    //for (const auto &city : cities) {
+    for (size_t idx_city = 0; idx_city < cities.size(); ++idx_city) {
+        //if (std::find(goods.begin(), goods.end(), city.good) != goods.end()) {
+        if (std::find(goods.begin(), goods.end(), idx_city) != goods.end()) {
+            if (cluster.count(idx_city)) {
+                cluster[idx_city].push_back(idx);
             } else {
-                cluster.insert(std::make_pair(city.good, std::vector<size_t>{idx}));
+                cluster.insert(std::make_pair(idx_city, std::vector<size_t>{idx}));
             }
         }
         ++idx;
