@@ -392,8 +392,8 @@ int main(int argc, char *argv[]) {
     }
 
     std::string str = "";
-    while (goods.size() < 3 - (-1 == startIdx)) {
-        std::cout << "not enough goods provided to justify some work: " << goods.size()
+    while (goods.size() < 3 - (-1 != startIdx)) {
+        std::cout << "not enough goods provided to justify some work: "
                   << " min: 3, given: " << (goods.size() + (-1 != startIdx)) << std::endl
                   << "please provide indices for cities (0 - " << (cities.size() - 1)
                   << "): <idx1> <idx2> ..." << std::endl;
@@ -412,7 +412,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (cluster.size() < 3) {
-        std::cout << "not enough valid goods provided to justify some work: " << cluster.size()
+        std::cout << "not enough valid cities provided to justify some work: " << cluster.size()
                   << " min: 3" << std::endl;
         return 0;
     }
