@@ -358,8 +358,8 @@ class Population {
     void report(int generation) {
         if (generation == 0) {
             std::cout << "\n";
-            std::cout << "  Generation       Best            Average       Standard \n";
-            std::cout << "  number           value           fitness       deviation \n";
+            std::cout << "  Generation       Best            Best          Average       Standard \n";
+            std::cout << "  number           value           genome        fitness       deviation \n";
             std::cout << "\n";
         }
 
@@ -376,7 +376,10 @@ class Population {
         double stddev = sqrt((sum_square - square_sum) / (size - 1));
         double best_val = current_best_genotype.fitness;
 
-        std::cout << "  " << std::setw(8) << generation << "  " << std::setw(14) << best_val << "  "
-                  << std::setw(14) << avg << "  " << std::setw(14) << stddev << "\n";
+        std::cout << "  " << std::setw(8) << generation << "  " << std::setw(14) << best_val << "  ";
+        for (size_t i = 0; i < variable_count; i++) {
+            std::cout << current_best_genotype.genes[i] << " ";
+        }
+        std::cout << std::setw(14) << avg << "  " << std::setw(14) << stddev << "\n";
     }
 };

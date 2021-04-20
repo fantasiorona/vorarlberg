@@ -451,5 +451,7 @@ int main(int argc, char *argv[]) {
                       get_evaluation_function(node_distances, circle), mutate_genotype,
                       get_crossover_function(cluster), 0);
 
+    population.print_result();
+
     return 0;
 }
