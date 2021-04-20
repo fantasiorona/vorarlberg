@@ -126,9 +126,13 @@ std::function<double(CitySequence &)> get_evaluation_function(std::map<int, int>
                 std::swap(from, to); // assure ascending direction to find in distance map
 
             // FIXME: Debug print until the crossover function is fixed (visualizes invalid values)
-            //std::cout << "distance from " << from << " to " << to <<
-            //    " = " << city_distances.at(from << KEY_UPPER | to) << std::endl;
-            sum += city_distances.at(from << KEY_UPPER | to);
+            try {
+                sum += city_distances.at(from << KEY_UPPER | to);
+            }
+            catch (std::exception &e) {
+                std::cout << "error: invalid distance from " << from << " to " << to << std::endl;
+                throw e;
+            }
         }
 
         // Return the negative sum because a higher fitness is considered better --> we're
@@ -179,8 +183,10 @@ get_crossover_function(std::set<VisitedCity> &allowed_values) {
         // for each gene variable
 
         // iterate over each value
-        //for (const size_t i : allowed_values) {
-        for (size_t i = 0; i < allowed_values.size(); ++i) {
+        for (const size_t i : allowed_values) {
+        // TODO: not sure if iterating over values or indices?
+        //for (size_t i = 0; i < allowed_values.size(); ++i) {
+
             // initialize to zero
             crossover_inverse_sequence1[i] = 0;
             crossover_inverse_sequence2[i] = 0;
@@ -191,20 +197,26 @@ get_crossover_function(std::set<VisitedCity> &allowed_values) {
                 // and continue until we find the value
                 if (!found1) {
                     // if we pass a bigger value we increment
-                    if (genes1[j] > (i + 1)) {
+                    //if (genes1[j] > (i + 1)) {
+                        //crossover_inverse_sequence1[i] = crossover_inverse_sequence1[i] + 1;
+                    if (genes1[j] > i) {
                         crossover_inverse_sequence1[i] = crossover_inverse_sequence1[i] + 1;
                     }
                     // stop when we find the value
-                    if (genes1[j] == (i + 1)) {
+                    //if (genes1[j] == (i + 1)) {
+                    if (genes1[j] == i) {
                         found1 = true;
                     }
                 }
                 // do same for the second parent
                 if (!found2) {
-                    if (genes2[j] > (i + 1)) {
+                    //if (genes2[j] > (i + 1)) {
+                        //crossover_inverse_sequence2[i] = crossover_inverse_sequence2[i] + 1;
+                    if (genes2[j] > i) {
                         crossover_inverse_sequence2[i] = crossover_inverse_sequence2[i] + 1;
                     }
-                    if (genes2[j] == (i + 1)) {
+                    //if (genes2[j] == (i + 1)) {
+                    if (genes2[j] == i) {
                         found2 = true;
                     }
                 }
@@ -246,15 +258,14 @@ get_crossover_function(std::set<VisitedCity> &allowed_values) {
         auto it = allowed_values.begin();
         for (size_t i = 0; i < gene_amount; ++i) {
             // FIXME: Does indexing allowed_values make sense? It works, but might not be ideally
-            // efficient? 
+            // efficient?
             // LEM: crossover should not use/need allowed_values at all...
             // but instead a flag is necessary to detect if the first node is a given starting node
             // thus shall not be modified
             VisitedCity allowed_val = *it;
+            // TEMP fix: just set values from allowed_vals
             //genes1[crossover_position_sequence1[i]] = allowed_val;
             //genes2[crossover_position_sequence2[i]] = allowed_val;
-
-            // TEMP fix: just set values from allowed_vals
             genes1[i] = allowed_val;
             genes2[i] = allowed_val;
             advance(it, 1);
@@ -278,6 +289,8 @@ void mutate_genotype(CitySequence &genes, double mutation_probability,
 
         if (x < mutation_probability) {
             int swapIndex = population.GetRandomGeneValue(0);
+            // TODO: do not swap starting point if provided
+
             // make sure we dont swap in place
             /* what was that? while for one loop, using idx 1 to size?
             while (swapIndex == j) {
