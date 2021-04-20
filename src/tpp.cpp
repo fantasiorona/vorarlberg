@@ -362,7 +362,7 @@ int main(int argc, char *argv[]) {
     }
 #endif
 
-    if (cities.size() < 1) {
+    if (cities.size() < 3) {
         std::cout << "no valid city network found, please contact your local administrator."
                   << std::endl;
         return 0;
@@ -392,9 +392,9 @@ int main(int argc, char *argv[]) {
     }
 
     std::string str = "";
-    while (goods.size() < 2 - (-1 == startIdx)) {
+    while (goods.size() < 3 - (-1 == startIdx)) {
         std::cout << "not enough goods provided to justify some work: " << goods.size()
-                  << " min: 2, given: " << (goods.size() + (-1 != startIdx)) << std::endl
+                  << " min: 3, given: " << (goods.size() + (-1 != startIdx)) << std::endl
                   << "please provide indices for cities (0 - " << (cities.size() - 1)
                   << "): <idx1> <idx2> ..." << std::endl;
 
@@ -411,9 +411,9 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    if (cluster.size() < 2) {
+    if (cluster.size() < 3) {
         std::cout << "not enough valid goods provided to justify some work: " << cluster.size()
-                  << " min: 2" << std::endl;
+                  << " min: 3" << std::endl;
         return 0;
     }
 
