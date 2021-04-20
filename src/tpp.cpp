@@ -126,7 +126,8 @@ std::function<double(CitySequence &)> get_evaluation_function(std::map<int, int>
                 std::swap(from, to); // assure ascending direction to find in distance map
 
             // FIXME: Debug print until the crossover function is fixed (visualizes invalid values)
-            std::cout << "From " << from << " to " << to << std::endl;
+            //std::cout << "distance from " << from << " to " << to <<
+            //    " = " << city_distances.at(from << KEY_UPPER | to) << std::endl;
             sum += city_distances.at(from << KEY_UPPER | to);
         }
 
@@ -137,17 +138,21 @@ std::function<double(CitySequence &)> get_evaluation_function(std::map<int, int>
 }
 
 std::function<void(CitySequence &)>
-get_initialization_function(std::map<int, std::vector<size_t>> cluster, int idx_first_city) {
-    return [cluster, idx_first_city](CitySequence &genes) {
-        for (const auto &entry : cluster) {
-            // choose random index for multiple options
-            int idx = (entry.second.size() == 1) ? 0 : rand() % entry.second.size();
-            // genome.insert(entry.second[idx]);
-            genes.push_back(entry.second[idx]);
+get_initialization_function(std::set<VisitedCity> &allowed_values, int idx_first_city) {
+    return [allowed_values, idx_first_city](CitySequence &genes) {
+        // TODO: better use std::copy?
+        size_t idx = 0;
+        for (const VisitedCity &node : allowed_values) {
+            genes[idx] = node;
+            if (node == (size_t)idx_first_city) std::swap(genes[0], genes[idx]);
+            ++idx;
         }
-
         std::random_shuffle(genes.begin() + (-1 != idx_first_city),
                             genes.end()); // don't shuffle starting point if given
+        #ifdef VERBOSE
+            //std::cout << "initial population: " << std::endl;
+            //print_sequence(genes);
+        #endif
     };
 }
 
@@ -157,10 +162,11 @@ std::vector<int> crossover_inverse_sequence2;
 std::vector<int> crossover_position_sequence1;
 std::vector<int> crossover_position_sequence2;
 std::function<void(CitySequence &, CitySequence &, Population<VisitedCity> &)>
-get_crossover_function(std::vector<VisitedCity> allowed_values) {
+get_crossover_function(std::set<VisitedCity> &allowed_values) {
 
     return [allowed_values](CitySequence &genes1, CitySequence &genes2,
                             Population<VisitedCity> &population) {
+
         // calculate inversion sequences
         size_t gene_amount = genes1.size();
         // inverse sequence counts the amount of bigger values to the left of the current value and
@@ -173,7 +179,8 @@ get_crossover_function(std::vector<VisitedCity> allowed_values) {
         // for each gene variable
 
         // iterate over each value
-        for (size_t i : allowed_values) {
+        //for (const size_t i : allowed_values) {
+        for (size_t i = 0; i < allowed_values.size(); ++i) {
             // initialize to zero
             crossover_inverse_sequence1[i] = 0;
             crossover_inverse_sequence2[i] = 0;
@@ -184,20 +191,20 @@ get_crossover_function(std::vector<VisitedCity> allowed_values) {
                 // and continue until we find the value
                 if (!found1) {
                     // if we pass a bigger value we increment
-                    if (genes1[j] > i + 1) {
+                    if (genes1[j] > (i + 1)) {
                         crossover_inverse_sequence1[i] = crossover_inverse_sequence1[i] + 1;
                     }
                     // stop when we find the value
-                    if (genes1[j] == i + 1) {
+                    if (genes1[j] == (i + 1)) {
                         found1 = true;
                     }
                 }
                 // do same for the second parent
                 if (!found2) {
-                    if (genes2[j] > i + 1) {
+                    if (genes2[j] > (i + 1)) {
                         crossover_inverse_sequence2[i] = crossover_inverse_sequence2[i] + 1;
                     }
-                    if (genes2[j] == i + 1) {
+                    if (genes2[j] == (i + 1)) {
                         found2 = true;
                     }
                 }
@@ -236,12 +243,27 @@ get_crossover_function(std::vector<VisitedCity> allowed_values) {
         }
 
         // actually create genes by using the position information to find the position of the value
+        auto it = allowed_values.begin();
         for (size_t i = 0; i < gene_amount; ++i) {
             // FIXME: Does indexing allowed_values make sense? It works, but might not be ideally
-            // efficient?
-            genes1[crossover_position_sequence1[i]] = allowed_values[i];
-            genes2[crossover_position_sequence2[i]] = allowed_values[i];
+            // efficient? 
+            // LEM: crossover should not use/need allowed_values at all...
+            // but instead a flag is necessary to detect if the first node is a given starting node
+            // thus shall not be modified
+            VisitedCity allowed_val = *it;
+            //genes1[crossover_position_sequence1[i]] = allowed_val;
+            //genes2[crossover_position_sequence2[i]] = allowed_val;
+
+            // TEMP fix: just set values from allowed_vals
+            genes1[i] = allowed_val;
+            genes2[i] = allowed_val;
+            advance(it, 1);
         }
+
+        #ifdef VERBOSE
+            //std::cout << "population in crossoverfunc end:" << std::endl;
+            //population.print_population();
+        #endif
     };
 }
 
@@ -257,9 +279,14 @@ void mutate_genotype(CitySequence &genes, double mutation_probability,
         if (x < mutation_probability) {
             int swapIndex = population.GetRandomGeneValue(0);
             // make sure we dont swap in place
+            /* what was that? while for one loop, using idx 1 to size?
             while (swapIndex == j) {
                 ++swapIndex;
                 if (swapIndex == variable_amount + 1) swapIndex = 1;
+            }*/
+            if (swapIndex == j) {
+                ++swapIndex;
+                if (swapIndex == variable_amount) swapIndex = 0;
             }
             std::swap(genes[j], genes[swapIndex]);
         }
@@ -267,7 +294,7 @@ void mutate_genotype(CitySequence &genes, double mutation_probability,
 }
 
 int main(int argc, char *argv[]) {
-    size_t iterations = 1;      // 200;    // extends the population for every iteration?
+    size_t iterations = 500;    // number of generations
     size_t populationSize = 20; // how many different routes are used
     int mutationRate = 5;       // percentage of which a mutation should happen
     int crossoverRate = 70;     // percentage of how often crossover should happen
@@ -328,56 +355,46 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    while (goods.size() < 2) {
+    // first check for starting node -> prepend to cluster if provided
+    if (false == startName.empty()) {
+        if (cityOrdinals.count(startName)) {
+            startIdx = cityOrdinals[startName];
+        } else {
+            std::cout << "given starting point name \"" << startName << "\" invalid!" << std::endl;
+            return 0;
+        }
+    }
+
+    //std::map<int, std::vector<size_t>> cluster;
+    std::set<VisitedCity> cluster;
+    if (-1 != startIdx) {
+        if (cities.size() > (size_t)startIdx) {
+            cluster.insert((VisitedCity)startIdx);
+        }
+        else {
+            std::cout << "starting point index \"" << startIdx << "\" is invalid! " <<
+                "range[0 - " << (cities.size() - 1) << "]" << std::endl;
+            return 0;
+        }
+    }
+
+    std::string str = "";
+    while (goods.size() < 2 - (-1 == startIdx)) {
         std::cout << "not enough goods provided to justify some work: " << goods.size()
-                  << " min: 2, given: " << goods.size() << std::endl
+                  << " min: 2, given: " << (goods.size() + (-1 != startIdx)) << std::endl
                   << "please provide indices for cities (0 - " << (cities.size() - 1)
                   << "): <idx1> <idx2> ..." << std::endl;
 
-        std::string str = "";
         std::getline(std::cin, str);
-        std::vector<std::string> input = split(str, " ");
-        for (const std::string &idx_city : input) {
+        for (const std::string &idx_city : split(str, " ")) {
             goods.insert(std::stoi(idx_city));
         }
     }
 
     // select cluster nodes which provide given goods
-    idx = 0;
-    std::map<int, std::vector<size_t>> cluster;
-    // for (const auto &city : cities) {
     for (size_t idx_city = 0; idx_city < cities.size(); ++idx_city) {
-        // if (std::find(goods.begin(), goods.end(), city.good) != goods.end()) {
         if (std::find(goods.begin(), goods.end(), idx_city) != goods.end()) {
-            if (cluster.count(idx_city)) {
-                cluster[idx_city].push_back(idx);
-            } else {
-                cluster.insert(std::make_pair(idx_city, std::vector<size_t>{idx}));
-            }
-        }
-        ++idx;
-    }
-
-    // check for starting node -> prepend to cluster if provided
-    if (false == startName.empty()) {
-        if (cityOrdinals.count(startName)) {
-            startIdx = cityOrdinals[startName];
-        } else {
-            std::cout << "given starting point \"" << startName << "\" invalid!" << std::endl;
-            return 0;
-        }
-    }
-
-    if (-1 != startIdx) {
-        if (cities.size() > (size_t)startIdx) {
-            cluster.insert(std::make_pair(0, std::vector<size_t>{(size_t)startIdx}));
-            // remove starting point good from cluster because is already collected
-            if (cluster.count(cities[startIdx].good)) {
-                cluster.erase(cities[startIdx].good);
-            }
-        } else {
-            std::cout << "starting point index \"" << startIdx << "\" invalid!" << std::endl;
-            return 0;
+            cluster.insert(idx_city);
         }
     }
 
@@ -389,12 +406,8 @@ int main(int argc, char *argv[]) {
 
 #ifdef VERBOSE
     std::cout << "selected cluster nodes (" << cluster.size() << "):" << std::endl;
-    for (const auto &entry : cluster) {
-        std::cout << "  good " << entry.first << ":" << std::endl;
-        for (int node : entry.second) {
-            std::cout << "\t" << node << " - " << cities[node].name << " (" << cities[node].good
-                      << ")" << std::endl;
-        }
+    for (const VisitedCity &node : cluster) {
+        std::cout << node << " - " << cities[node].name << std::endl;
     }
 #endif
 
@@ -402,23 +415,13 @@ int main(int argc, char *argv[]) {
     // romaniaroads data file)
     std::map<int, int> node_distances; // key is bitwise combination of node indices, only
                                        // storing one direction (smaller index to bigger)
-    // omg noooe what am i doin? oO
-    // TODO: double iterate cities, starting inner loop at current outer loop index, using only
-    // relevant nodes and discarding same goods
-    for (const auto &setFrom : cluster) {
-        for (const auto &setTo : cluster) {
-            if (setFrom.first == setTo.first)
-                continue; // no connections needed between cities with the same goods
+    for (const VisitedCity &from : cluster) {
+        for (const VisitedCity &to : cluster) {
+            if (from >= to) continue;
 
-            for (int from : setFrom.second) {
-                for (int to : setTo.second) {
-                    if (from >= to) continue; // ignore duplicates and reverse order
-
-                    int key = (from << KEY_UPPER | to);
-                    int distance = minRoute(&cities[from], &cities[to]);
-                    node_distances.insert(std::make_pair(key, distance));
-                }
-            }
+            int key = (from << KEY_UPPER | to);
+            int distance = minRoute(&cities[from], &cities[to]);
+            node_distances.insert(std::make_pair(key, distance));
         }
     }
 
@@ -432,26 +435,21 @@ int main(int argc, char *argv[]) {
     }
 #endif
 
-    // Get list of allowed values
-    std::vector<VisitedCity> allowed_values;
-    for (const auto &entry : cluster) {
-        allowed_values.emplace_back(entry.first);
-    }
-
     // adjusting size according to variable count
-    crossover_inverse_sequence1.resize(allowed_values.size());
-    crossover_inverse_sequence2.resize(allowed_values.size());
-    crossover_position_sequence1.resize(allowed_values.size());
-    crossover_position_sequence2.resize(allowed_values.size());
+    size_t allowed_values_count = cluster.size();
+    crossover_inverse_sequence1.resize(allowed_values_count);
+    crossover_inverse_sequence2.resize(allowed_values_count);
+    crossover_position_sequence1.resize(allowed_values_count);
+    crossover_position_sequence2.resize(allowed_values_count);
 
-    Population<VisitedCity> population(allowed_values, 500, populationSize,
-                                       static_cast<float>(crossoverRate) / 100.0,
-                                       static_cast<float>(mutationRate) / 100.0);
+    Population<VisitedCity> population(cluster, iterations, populationSize,
+                                       crossoverRate/100.0f, mutationRate/100.0f);
 
     // Fitnesses are negative, so 0 (meaning no distance is traversed at all) would be ideal
+    std::cout << "starting evolution with " << iterations << " generations..." << std::endl;
     population.evolve(get_initialization_function(cluster, startIdx),
                       get_evaluation_function(node_distances, circle), mutate_genotype,
-                      get_crossover_function(allowed_values), 0);
+                      get_crossover_function(cluster), 0);
 
     return 0;
 }

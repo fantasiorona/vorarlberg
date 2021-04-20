@@ -6,6 +6,7 @@
 #include <iostream>
 #include <math.h>
 #include <random>
+#include <set>
 #include <string>
 
 template <class T>
@@ -26,7 +27,7 @@ class Population {
         random_gene_index = std::uniform_int_distribution<int>(0, variable_count - 1);
     }
 
-    Population(std::vector<T> allowed_values, unsigned int max_generations, unsigned int size,
+    Population(std::set<T> allowed_values, unsigned int max_generations, unsigned int size,
                double crossover_probability, double mutation_probability)
         : max_generations(max_generations), size(size),
           crossover_probability(crossover_probability), mutation_probability(mutation_probability),
@@ -36,8 +37,8 @@ class Population {
         genotypes.resize(size);
         new_genotypes.resize(size);
 
-        // has to be initialized after parsing because variable_count only gets the correct value
-        // after the file is read
+        // need to set values manually if not read from file
+        variable_count = allowed_values.size();
         random_gene_index = std::uniform_int_distribution<int>(0, variable_count - 1);
     }
 
@@ -58,13 +59,22 @@ class Population {
         evaluate_all_fitnesses(evaluation_function);
         remember_best_genotype();
 
+        //std::cout << "starting population:" << std::endl;
+        //print_population();
+
         for (unsigned int generation = 0; generation < max_generations; generation++) {
             create_new_population();
+
             crossover_population(crossover_function);
             mutate_population(mutation_function);
-            report(generation);
+
+            //std::cout << "current population (after xover and mutate):" << std::endl;
+            //print_population();
+
             evaluate_all_fitnesses(evaluation_function);
             elitist();
+
+            report(generation);
 
             if (current_best_genotype.fitness == perfect_fitness) return;
         }
@@ -82,6 +92,16 @@ class Population {
 
         std::cout << "\n";
         std::cout << "  Best fitness = " << current_best_genotype.fitness << "\n";
+    }
+
+    void print_population() const {
+        for (unsigned int i = 0; i < size - 1; ++i) {
+            for (const auto &gene : genotypes[i].genes)
+            {
+                std::cout << gene << " ";
+            }
+            std::cout << "with fitness: " << genotypes[i].fitness << std::endl;
+        }
     }
 
     int GetVariableCount() const {
@@ -120,7 +140,7 @@ class Population {
     Genotype<T> current_best_genotype;
 
     /// Allowed gene variable values, or alternatively upper and lower bounds for the gene variables
-    std::vector<T> allowed_values;
+    std::set<T> allowed_values;
     std::vector<T> upper_gene_bound;
     std::vector<T> lower_gene_bound;
 
