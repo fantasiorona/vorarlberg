@@ -172,10 +172,6 @@ get_crossover_function(std::set<VisitedCity> &allowed_values) {
     return [allowed_values](CitySequence &genes1, CitySequence &genes2,
                             Population<VisitedCity> &population) {
         size_t gene_amount = genes1.size();
-
-        std::cout << "Parents:" << std::endl;
-        print_sequence(genes1);
-        print_sequence(genes2);
         // transform genes into a form where we have continous values (meaning from 0 to
         // gene_amount-1), because otherwise this form of crossover does not make that much sense
         // as it transform the original values into a form where each value is defined by its
@@ -198,49 +194,39 @@ get_crossover_function(std::set<VisitedCity> &allowed_values) {
         // for each gene variable
 
         // iterate over each value
-        for (const size_t i : allowed_values) {
-            // TODO: not sure if iterating over values or indices?
-            // for (size_t i = 0; i < allowed_values.size(); ++i) {
-
+        for (int i = 0; i < gene_amount; ++i) {
             // initialize to zero
             crossover_inverse_sequence1[i] = 0;
             crossover_inverse_sequence2[i] = 0;
             bool found1 = false;
             bool found2 = false;
             // for each value we start at the left
-            for (size_t j = 0; j < gene_amount; ++j) {
+            for (int j = 0; j < gene_amount; ++j) {
                 // and continue until we find the value
                 if (!found1) {
                     // if we pass a bigger value we increment
-                    // if (genes1[j] > (i + 1)) {
-                    // crossover_inverse_sequence1[i] = crossover_inverse_sequence1[i] + 1;
                     if (gene_indices1[j] > i) {
                         crossover_inverse_sequence1[i] = crossover_inverse_sequence1[i] + 1;
                     }
                     // stop when we find the value
-                    // if (genes1[j] == (i + 1)) {
                     if (gene_indices1[j] == i) {
                         found1 = true;
                     }
                 }
                 // do same for the second parent
                 if (!found2) {
-                    // if (genes2[j] > (i + 1)) {
-                    // crossover_inverse_sequence2[i] = crossover_inverse_sequence2[i] + 1;
                     if (gene_indices2[j] > i) {
                         crossover_inverse_sequence2[i] = crossover_inverse_sequence2[i] + 1;
                     }
-                    // if (genes2[j] == (i + 1)) {
                     if (gene_indices2[j] == i) {
                         found2 = true;
                     }
                 }
             }
         }
-
         // crossover afterwards is a simple swap operation with a randomly defined cutoff point
-        size_t cutoff_point = population.GetRandomGeneValue(0);
-        for (size_t i = cutoff_point; i < gene_amount; ++i) {
+        int cutoff_point = population.GetRandomGeneValue(0);
+        for (int i = cutoff_point; i < gene_amount; ++i) {
             std::swap(crossover_inverse_sequence1[i], crossover_inverse_sequence2[i]);
         }
         // translate back to actual genes
@@ -253,40 +239,33 @@ get_crossover_function(std::set<VisitedCity> &allowed_values) {
             crossover_position_sequence1[i] = crossover_inverse_sequence1[i];
             crossover_position_sequence2[i] = crossover_inverse_sequence2[i];
             // for each value to the right
-            for (size_t j = i + 1; j < gene_amount; ++j) {
+            for (int j = i + 1; j < gene_amount; ++j) {
                 // increase if its bigger or equal
                 if (crossover_position_sequence1[j] >= crossover_position_sequence1[i]) {
-                    // FIXME: We can't just add 1, this will generate invalid values! We need to get
-                    // a new valid value from allowed_values. Specifically, this seems to introduce
-                    // duplicates when the input values are far apart, e.g. "1 9 15"
                     crossover_position_sequence1[j] = crossover_position_sequence1[j] + 1;
                 }
                 // do the same for the other parent
                 if (crossover_position_sequence2[j] >= crossover_position_sequence2[i]) {
-                    // FIXME: Same as above
                     crossover_position_sequence2[j] = crossover_position_sequence2[j] + 1;
                 }
             }
         }
-        // actually create genes by using the position information to find the position of the value
-        for (int i = 0; i < gene_amount; ++i) {
-            gene_indices1[crossover_position_sequence1[i]] = i + 1;
-            gene_indices2[crossover_position_sequence2[i]] = i + 1;
-        }
 
+        // actually create genes by using the position information to find the position of the value
+        // add 1 because values are from 1-9 while vector indizes are from 0-8
+        for (int i = 0; i < gene_amount; ++i) {
+            gene_indices1[crossover_position_sequence1[i]] = i;
+            gene_indices2[crossover_position_sequence2[i]] = i;
+        }
         // transform crossedover continuous value vector back into the explicit city index form
         for (int i = 0; i < gene_amount; ++i) {
             auto it1 = allowed_values.begin();
-            std::advance(it1, gene_indices1[i] - 1);
+            std::advance(it1, gene_indices1[i]);
             genes1[i] = *it1;
             auto it2 = allowed_values.begin();
-            std::advance(it2, gene_indices2[i] - 1);
+            std::advance(it2, gene_indices2[i]);
             genes2[i] = *it2;
         }
-        std::cout << "Cutoff point: " << cutoff_point << std::endl;
-        std::cout << "Children:" << std::endl;
-        print_sequence(genes1);
-        print_sequence(genes2);
     };
 }
 

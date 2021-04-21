@@ -59,8 +59,8 @@ class Population {
         evaluate_all_fitnesses(evaluation_function);
         remember_best_genotype();
 
-        //std::cout << "starting population:" << std::endl;
-        //print_population();
+        // std::cout << "starting population:" << std::endl;
+        // print_population();
 
         for (unsigned int generation = 0; generation < max_generations; generation++) {
             create_new_population();
@@ -68,8 +68,8 @@ class Population {
             crossover_population(crossover_function);
             mutate_population(mutation_function);
 
-            //std::cout << "current population (after xover and mutate):" << std::endl;
-            //print_population();
+            // std::cout << "current population (after xover and mutate):" << std::endl;
+            // print_population();
 
             evaluate_all_fitnesses(evaluation_function);
             elitist();
@@ -96,8 +96,7 @@ class Population {
 
     void print_population() const {
         for (unsigned int i = 0; i < size - 1; ++i) {
-            for (const auto &gene : genotypes[i].genes)
-            {
+            for (const auto &gene : genotypes[i].genes) {
                 std::cout << gene << " ";
             }
             std::cout << "with fitness: " << genotypes[i].fitness << std::endl;
@@ -129,7 +128,7 @@ class Population {
         else {
             // TODO: Should be renamed to GetRandomGeneIndex; otherwise this should return
             // allowed_values[random_index] (but there's actually no use case for that atm)
-            int random_index = floor(GetRandomNormalizedDouble() * variable_count);
+            int random_index = floor((GetRandomNormalizedDouble() - 0.001f) * variable_count);
             return random_index;
         }
     }
@@ -358,8 +357,10 @@ class Population {
     void report(int generation) {
         if (generation == 0) {
             std::cout << "\n";
-            std::cout << "  Generation       Best            Best          Average       Standard \n";
-            std::cout << "  number           value           genome        fitness       deviation \n";
+            std::cout
+                << "  Generation       Best            Best          Average       Standard \n";
+            std::cout
+                << "  number           value           genome        fitness       deviation \n";
             std::cout << "\n";
         }
 
@@ -376,7 +377,8 @@ class Population {
         double stddev = sqrt((sum_square - square_sum) / (size - 1));
         double best_val = current_best_genotype.fitness;
 
-        std::cout << "  " << std::setw(8) << generation << "  " << std::setw(14) << best_val << "  ";
+        std::cout << "  " << std::setw(8) << generation << "  " << std::setw(14) << best_val
+                  << "  ";
         for (size_t i = 0; i < variable_count; i++) {
             std::cout << current_best_genotype.genes[i] << " ";
         }
