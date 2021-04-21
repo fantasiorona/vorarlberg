@@ -2,6 +2,7 @@
 #include <ctime>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <map>
 //#include <sstream>
 #include <vector>
@@ -33,34 +34,75 @@ struct Road {
 std::map<std::string, int> cityOrdinals; // mapping name to vector index
 std::vector<City> cities;
 
-// TODO: add actual visited cities to path
-int minRoute(const City *a, const City *b, std::vector<const City *> &path) {
-    int minRoute = 0;                  // a->good;
-    std::vector<const City *> visited; // mark already visited nodes
-    std::multimap<int, const City *>
-        weights; // store distances in sorted map, allows duplicate keys
-    do {
-        visited.push_back(a);
-        for (const auto &road : a->roads) {
-            if (std::find(visited.begin(), visited.end(), &cities[road.to]) == visited.end()) {
-                // put min distances on heap
-                // weights.insert(std::make_pair(minRoute + road.distance, &cities[road.to])); //
-                // without buying goods on visited cities
-                weights.insert(std::make_pair(minRoute + road.distance + cities[road.to].good,
-                                              &cities[road.to]));
+// modifyed djikstra that also stores the path information
+// based on:
+// https://www.codingame.com/playgrounds/1608/shortest-paths-with-dijkstras-algorithm/dijkstras-algorithm
+int minRoute(size_t a, size_t b, std::vector<const City *> &path) {
+    // keeps track of already visited cities
+    std::vector<bool> visited(cities.size(), false);
+    // keeps track of current minimum distances to all cities
+    std::vector<int> distances(cities.size(), 9999999);
+    // keeps track of current minimum paths
+    std::vector<std::vector<const City *>> paths(cities.size());
+    // keeps track of cities we have to visit
+    std::vector<size_t> to_visit;
+
+    // starting at a
+    to_visit.push_back(a);
+    // distance to start city is 0
+    distances[a] = 0;
+    size_t current_city = a;
+    // do the loop while we have no more cities to visit or we have reached b
+    while (!to_visit.empty() && current_city != b) {
+        // distance to next nearest city we can visit, set basically to infinity at beginning
+        int nearest_city_distance = 9999999;
+        size_t next_city = 0;
+        // iterate over all city to visity
+        for (size_t i = 0; i < to_visit.size(); i++) {
+            // comparing with currently smalles distance to find the next city
+            if (distances[to_visit[i]] < nearest_city_distance) {
+                next_city = i;
+                nearest_city_distance = distances[to_visit[i]];
             }
         }
+        current_city = to_visit[next_city];
+        // remove current_city from cities to visit
+        std::swap(to_visit[next_city], to_visit[to_visit.size() - 1]);
+        to_visit.resize(to_visit.size() - 1);
 
-        do {
-            // remove from heap, update minRoute
-            minRoute = weights.begin()->first;
-            a = weights.begin()->second;
-            // weights.erase(minRoute); // erases all keys
-            weights.erase(weights.find(minRoute));
-        } while (std::find(visited.begin(), visited.end(), a) != visited.end());
-    } while (a != b);
+        // iterate over all neighbors of current city
+        for (auto road : cities[current_city].roads) {
+            // and calculate the total distance to the start city through the current path
+            int distance = distances[current_city] + road.distance + cities[road.to].good;
+            // if we found a shorter path
+            if (distances[road.to] > distance) {
+                // store new shortest distance
+                distances[road.to] = distance;
+                // store the path:
+                // clear previous path
+                paths[road.to].clear();
+                // store path to previous city
+                for (auto c : paths[current_city]) {
+                    paths[road.to].push_back(c);
+                }
+                // add current city
+                paths[road.to].push_back(&cities[road.to]);
+            }
+            // store cities we have not yet visited
+            if (!visited[road.to]) {
+                to_visit.push_back(road.to);
+            }
+        }
+        visited[current_city] = true;
+    }
 
-    return minRoute;
+    // set return path if available
+    if (paths[b].size() > 0) {
+        for (size_t i = 0; i < paths[b].size() - 1; i++) {
+            path.push_back(paths[b][i]);
+        }
+    }
+    return distances[b];
 }
 
 std::vector<std::string> split(const std::string &s, const std::string &delimiter) {

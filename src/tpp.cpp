@@ -304,11 +304,22 @@ void print_path(const Genotype<VisitedCity> &path,
         std::cout << cities[from].name << " ->\n\t\t(";
         auto to = path.genes[i + 1];
 
-        if (from > to) std::swap(from, to); // assure ascending direction to find in distance map
+        bool reverse = from > to;
+        if (reverse) {
+            std::swap(from, to);
+        } // assure ascending direction to find in distance map
         int key = (from << KEY_UPPER | to);
 
-        for (auto c : node_paths.at(key)) {
-            std::cout << c->name << " ";
+        if (node_paths.at(key).size() > 0) {
+            if (reverse) {
+                for (int i = node_paths.at(key).size() - 1; i >= 0; i--) {
+                    std::cout << node_paths.at(key)[i]->name << " ";
+                }
+            } else {
+                for (auto c : node_paths.at(key)) {
+                    std::cout << c->name << " ";
+                }
+            }
         }
         std::cout << ")\n";
     }
@@ -324,7 +335,7 @@ int main(int argc, char *argv[]) {
     std::set<int> goods;        // provided goods to buy on tour
     int startIdx = -1; // starting point index for route, if not provided just start from first good
     std::string startName = ""; // starting point cityname
-    std::string dataPath = "inputs/romaniaroads.pl";
+    std::string dataPath = "inputs\\romaniaroads.pl";
 
     // 1. read input params
     // --------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -440,17 +451,19 @@ int main(int argc, char *argv[]) {
     std::map<int, std::vector<const City *>>
         node_paths; // key is bitwise combination of node indices, only
                     // storing one direction (smaller index to bigger)
+
     for (const VisitedCity &from : cluster) {
         for (const VisitedCity &to : cluster) {
             if (from >= to) continue;
 
             int key = (from << KEY_UPPER | to);
             std::vector<const City *> path;
-            int distance = minRoute(&cities[from], &cities[to], path);
+            int distance = minRoute(from, to, path);
             node_distances.insert(std::make_pair(key, distance));
             node_paths.insert(std::make_pair(key, path));
         }
     }
+    std::cout << std::endl << std::endl << std::endl;
 
 #ifdef VERBOSE
     std::cout << "calculated distances (" << node_distances.size()
