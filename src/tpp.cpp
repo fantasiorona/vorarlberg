@@ -128,8 +128,7 @@ std::function<double(CitySequence &)> get_evaluation_function(std::map<int, int>
             // FIXME: Debug print until the crossover function is fixed (visualizes invalid values)
             try {
                 sum += city_distances.at(from << KEY_UPPER | to);
-            }
-            catch (std::exception &e) {
+            } catch (std::exception &e) {
                 std::cout << "error: invalid distance from " << from << " to " << to << std::endl;
                 throw e;
             }
@@ -153,10 +152,10 @@ get_initialization_function(std::set<VisitedCity> &allowed_values, int idx_first
         }
         std::random_shuffle(genes.begin() + (-1 != idx_first_city),
                             genes.end()); // don't shuffle starting point if given
-        #ifdef VERBOSE
-            //std::cout << "initial population: " << std::endl;
-            //print_sequence(genes);
-        #endif
+#ifdef VERBOSE
+        // std::cout << "initial population: " << std::endl;
+        // print_sequence(genes);
+#endif
     };
 }
 
@@ -165,14 +164,30 @@ std::vector<int> crossover_inverse_sequence1;
 std::vector<int> crossover_inverse_sequence2;
 std::vector<int> crossover_position_sequence1;
 std::vector<int> crossover_position_sequence2;
+std::vector<size_t> gene_indices1;
+std::vector<size_t> gene_indices2;
 std::function<void(CitySequence &, CitySequence &, Population<VisitedCity> &)>
 get_crossover_function(std::set<VisitedCity> &allowed_values) {
 
     return [allowed_values](CitySequence &genes1, CitySequence &genes2,
                             Population<VisitedCity> &population) {
-
-        // calculate inversion sequences
         size_t gene_amount = genes1.size();
+
+        std::cout << "Parents:" << std::endl;
+        print_sequence(genes1);
+        print_sequence(genes2);
+        // transform genes into a form where we have continous values (meaning from 0 to
+        // gene_amount-1), because otherwise this form of crossover does not make that much sense
+        // as it transform the original values into a form where each value is defined by its
+        // position in the vector. This only works if we know exactly which values have been in the
+        // vector before hand, otherwise the inversion sequences are not unambiguous.
+        for (size_t i = 0; i < gene_amount; i++) {
+            gene_indices1[i] =
+                std::distance(allowed_values.begin(), allowed_values.find(genes1[i]));
+            gene_indices2[i] =
+                std::distance(allowed_values.begin(), allowed_values.find(genes2[i]));
+        }
+        // calculate inversion sequences
         // inverse sequence counts the amount of bigger values to the left of the current value and
         // stores it at the corresponding index
         // so for example for the gene [2 3 4 5 1 6 7 8 9] we start with the value 1
@@ -184,8 +199,8 @@ get_crossover_function(std::set<VisitedCity> &allowed_values) {
 
         // iterate over each value
         for (const size_t i : allowed_values) {
-        // TODO: not sure if iterating over values or indices?
-        //for (size_t i = 0; i < allowed_values.size(); ++i) {
+            // TODO: not sure if iterating over values or indices?
+            // for (size_t i = 0; i < allowed_values.size(); ++i) {
 
             // initialize to zero
             crossover_inverse_sequence1[i] = 0;
@@ -197,26 +212,26 @@ get_crossover_function(std::set<VisitedCity> &allowed_values) {
                 // and continue until we find the value
                 if (!found1) {
                     // if we pass a bigger value we increment
-                    //if (genes1[j] > (i + 1)) {
-                        //crossover_inverse_sequence1[i] = crossover_inverse_sequence1[i] + 1;
-                    if (genes1[j] > i) {
+                    // if (genes1[j] > (i + 1)) {
+                    // crossover_inverse_sequence1[i] = crossover_inverse_sequence1[i] + 1;
+                    if (gene_indices1[j] > i) {
                         crossover_inverse_sequence1[i] = crossover_inverse_sequence1[i] + 1;
                     }
                     // stop when we find the value
-                    //if (genes1[j] == (i + 1)) {
-                    if (genes1[j] == i) {
+                    // if (genes1[j] == (i + 1)) {
+                    if (gene_indices1[j] == i) {
                         found1 = true;
                     }
                 }
                 // do same for the second parent
                 if (!found2) {
-                    //if (genes2[j] > (i + 1)) {
-                        //crossover_inverse_sequence2[i] = crossover_inverse_sequence2[i] + 1;
-                    if (genes2[j] > i) {
+                    // if (genes2[j] > (i + 1)) {
+                    // crossover_inverse_sequence2[i] = crossover_inverse_sequence2[i] + 1;
+                    if (gene_indices2[j] > i) {
                         crossover_inverse_sequence2[i] = crossover_inverse_sequence2[i] + 1;
                     }
-                    //if (genes2[j] == (i + 1)) {
-                    if (genes2[j] == i) {
+                    // if (genes2[j] == (i + 1)) {
+                    if (gene_indices2[j] == i) {
                         found2 = true;
                     }
                 }
@@ -253,28 +268,25 @@ get_crossover_function(std::set<VisitedCity> &allowed_values) {
                 }
             }
         }
-
         // actually create genes by using the position information to find the position of the value
-        auto it = allowed_values.begin();
-        for (size_t i = 0; i < gene_amount; ++i) {
-            // FIXME: Does indexing allowed_values make sense? It works, but might not be ideally
-            // efficient?
-            // LEM: crossover should not use/need allowed_values at all...
-            // but instead a flag is necessary to detect if the first node is a given starting node
-            // thus shall not be modified
-            VisitedCity allowed_val = *it;
-            // TEMP fix: just set values from allowed_vals
-            //genes1[crossover_position_sequence1[i]] = allowed_val;
-            //genes2[crossover_position_sequence2[i]] = allowed_val;
-            genes1[i] = allowed_val;
-            genes2[i] = allowed_val;
-            advance(it, 1);
+        for (int i = 0; i < gene_amount; ++i) {
+            gene_indices1[crossover_position_sequence1[i]] = i + 1;
+            gene_indices2[crossover_position_sequence2[i]] = i + 1;
         }
 
-        #ifdef VERBOSE
-            //std::cout << "population in crossoverfunc end:" << std::endl;
-            //population.print_population();
-        #endif
+        // transform crossedover continuous value vector back into the explicit city index form
+        for (int i = 0; i < gene_amount; ++i) {
+            auto it1 = allowed_values.begin();
+            std::advance(it1, gene_indices1[i] - 1);
+            genes1[i] = *it1;
+            auto it2 = allowed_values.begin();
+            std::advance(it2, gene_indices2[i] - 1);
+            genes2[i] = *it2;
+        }
+        std::cout << "Cutoff point: " << cutoff_point << std::endl;
+        std::cout << "Children:" << std::endl;
+        print_sequence(genes1);
+        print_sequence(genes2);
     };
 }
 
@@ -290,7 +302,6 @@ void mutate_genotype(CitySequence &genes, double mutation_probability,
         if (x < mutation_probability) {
             int swapIndex = population.GetRandomGeneValue(0);
             // TODO: do not swap starting point if provided
-
             // make sure we dont swap in place
             /* what was that? while for one loop, using idx 1 to size?
             while (swapIndex == j) {
@@ -378,15 +389,14 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    //std::map<int, std::vector<size_t>> cluster;
+    // std::map<int, std::vector<size_t>> cluster;
     std::set<VisitedCity> cluster;
     if (-1 != startIdx) {
         if (cities.size() > (size_t)startIdx) {
             cluster.insert((VisitedCity)startIdx);
-        }
-        else {
-            std::cout << "starting point index \"" << startIdx << "\" is invalid! " <<
-                "range[0 - " << (cities.size() - 1) << "]" << std::endl;
+        } else {
+            std::cout << "starting point index \"" << startIdx << "\" is invalid! "
+                      << "range[0 - " << (cities.size() - 1) << "]" << std::endl;
             return 0;
         }
     }
@@ -454,9 +464,11 @@ int main(int argc, char *argv[]) {
     crossover_inverse_sequence2.resize(allowed_values_count);
     crossover_position_sequence1.resize(allowed_values_count);
     crossover_position_sequence2.resize(allowed_values_count);
+    gene_indices1.resize(allowed_values_count);
+    gene_indices2.resize(allowed_values_count);
 
-    Population<VisitedCity> population(cluster, iterations, populationSize,
-                                       crossoverRate/100.0f, mutationRate/100.0f);
+    Population<VisitedCity> population(cluster, iterations, populationSize, crossoverRate / 100.0f,
+                                       mutationRate / 100.0f);
 
     // Fitnesses are negative, so 0 (meaning no distance is traversed at all) would be ideal
     std::cout << "starting evolution with " << iterations << " generations..." << std::endl;
