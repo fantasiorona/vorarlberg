@@ -54,7 +54,6 @@ class Population {
         // population object, so we can't do it in constructor
         // TODO: think about a smarter solution
         initialize_genotypes(initialization_function);
-
         // Initial evaluation (this is called within the generation functions later)
         evaluate_all_fitnesses(evaluation_function);
         remember_best_genotype();
@@ -128,7 +127,7 @@ class Population {
         else {
             // TODO: Should be renamed to GetRandomGeneIndex; otherwise this should return
             // allowed_values[random_index] (but there's actually no use case for that atm)
-            int random_index = floor((GetRandomNormalizedDouble() - 0.001f) * variable_count);
+            int random_index = floor(GetRandomNormalizedDouble() * variable_count);
             return random_index;
         }
     }

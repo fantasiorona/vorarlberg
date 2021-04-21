@@ -257,6 +257,7 @@ get_crossover_function(std::set<VisitedCity> &allowed_values) {
             gene_indices1[crossover_position_sequence1[i]] = i;
             gene_indices2[crossover_position_sequence2[i]] = i;
         }
+
         // transform crossedover continuous value vector back into the explicit city index form
         for (int i = 0; i < gene_amount; ++i) {
             auto it1 = allowed_values.begin();
@@ -294,6 +295,24 @@ void mutate_genotype(CitySequence &genes, double mutation_probability,
             std::swap(genes[j], genes[swapIndex]);
         }
     }
+}
+
+void print_path(const Genotype<VisitedCity> &path,
+                const std::map<int, std::vector<const City *>> &node_paths) {
+    for (size_t i = 0; i < path.genes.size() - 1; i++) {
+        auto from = path.genes[i];
+        std::cout << cities[from].name << " ->\n\t\t(";
+        auto to = path.genes[i + 1];
+
+        if (from > to) std::swap(from, to); // assure ascending direction to find in distance map
+        int key = (from << KEY_UPPER | to);
+
+        for (auto c : node_paths.at(key)) {
+            std::cout << c->name << " ";
+        }
+        std::cout << ")\n";
+    }
+    std::cout << cities[path.genes[path.genes.size() - 1]].name << std::endl;
 }
 
 int main(int argc, char *argv[]) {
@@ -417,13 +436,19 @@ int main(int argc, char *argv[]) {
     // romaniaroads data file)
     std::map<int, int> node_distances; // key is bitwise combination of node indices, only
                                        // storing one direction (smaller index to bigger)
+
+    std::map<int, std::vector<const City *>>
+        node_paths; // key is bitwise combination of node indices, only
+                    // storing one direction (smaller index to bigger)
     for (const VisitedCity &from : cluster) {
         for (const VisitedCity &to : cluster) {
             if (from >= to) continue;
 
             int key = (from << KEY_UPPER | to);
-            int distance = minRoute(&cities[from], &cities[to]);
+            std::vector<const City *> path;
+            int distance = minRoute(&cities[from], &cities[to], path);
             node_distances.insert(std::make_pair(key, distance));
+            node_paths.insert(std::make_pair(key, path));
         }
     }
 
@@ -456,6 +481,8 @@ int main(int argc, char *argv[]) {
                       get_crossover_function(cluster), 0);
 
     population.print_result();
-
+    auto path = population.GetBestGenotype();
+    std::cout << "Path: " << std::endl;
+    print_path(path, node_paths);
     return 0;
 }

@@ -33,7 +33,8 @@ struct Road {
 std::map<std::string, int> cityOrdinals; // mapping name to vector index
 std::vector<City> cities;
 
-int minRoute(const City *a, const City *b) {
+// TODO: add actual visited cities to path
+int minRoute(const City *a, const City *b, std::vector<const City *> &path) {
     int minRoute = 0;                  // a->good;
     std::vector<const City *> visited; // mark already visited nodes
     std::multimap<int, const City *>
@@ -54,7 +55,6 @@ int minRoute(const City *a, const City *b) {
             // remove from heap, update minRoute
             minRoute = weights.begin()->first;
             a = weights.begin()->second;
-
             // weights.erase(minRoute); // erases all keys
             weights.erase(weights.find(minRoute));
         } while (std::find(visited.begin(), visited.end(), a) != visited.end());
