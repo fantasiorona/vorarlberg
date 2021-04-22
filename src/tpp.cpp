@@ -298,7 +298,7 @@ void mutate_genotype(CitySequence &genes, double mutation_probability,
 }
 
 void print_path(const Genotype<VisitedCity> &path,
-                const std::map<int, std::vector<const City *>> &node_paths) {
+                const std::map<int, std::vector<const City *>> &node_paths, bool circle) {
     for (size_t i = 0; i < path.genes.size() - 1; i++) {
         auto from = path.genes[i];
         std::cout << cities[from].name << " ->\n\t\t(";
@@ -323,7 +323,33 @@ void print_path(const Genotype<VisitedCity> &path,
         }
         std::cout << ")\n";
     }
-    std::cout << cities[path.genes[path.genes.size() - 1]].name << std::endl;
+    std::cout << cities[path.genes[path.genes.size() - 1]].name;
+
+    if (circle) {
+        std::cout << " ->\n\t\t(";
+        auto from = path.genes[path.genes.size() - 1];
+        auto to = path.genes[0];
+        bool reverse = from > to;
+        if (reverse) {
+            std::swap(from, to);
+        } // assure ascending direction to find in distance map
+        int key = (from << KEY_UPPER | to);
+        if (node_paths.at(key).size() > 0) {
+            if (reverse) {
+                for (int i = node_paths.at(key).size() - 1; i >= 0; i--) {
+                    std::cout << node_paths.at(key)[i]->name << " ";
+                }
+            } else {
+                for (auto c : node_paths.at(key)) {
+                    std::cout << c->name << " ";
+                }
+            }
+        }
+        std::cout << ")\n";
+        std::cout << cities[path.genes[0]].name;
+    }
+
+    std::cout << std::endl;
 }
 
 int main(int argc, char *argv[]) {
@@ -496,6 +522,6 @@ int main(int argc, char *argv[]) {
     population.print_result();
     auto path = population.GetBestGenotype();
     std::cout << "Path: " << std::endl;
-    print_path(path, node_paths);
+    print_path(path, node_paths, circle);
     return 0;
 }
