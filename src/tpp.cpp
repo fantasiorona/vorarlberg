@@ -373,7 +373,7 @@ int main(int argc, char *argv[]) {
     std::set<int> goods;        // provided goods to buy on tour
     int startIdx = -1; // starting point index for route, if not provided just start from first good
     std::string startName = ""; // starting point cityname
-    std::string dataPath = "inputs\\romaniaroads.pl";
+    std::string dataPath = "inputs/romaniaroads.pl";
 
     // 1. read input params
     // --------------------------------------------------------------------------------------------------------------------------------------------------------
