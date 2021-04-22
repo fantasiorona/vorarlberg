@@ -153,8 +153,8 @@ get_initialization_function(std::set<VisitedCity> &allowed_values, int idx_first
         std::random_shuffle(genes.begin() + (-1 != idx_first_city),
                             genes.end()); // don't shuffle starting point if given
 #ifdef VERBOSE
-        // std::cout << "initial population: " << std::endl;
-        // print_sequence(genes);
+        std::cout << "initial population: " << std::endl;
+        print_sequence(genes);
 #endif
     };
 }
@@ -270,31 +270,43 @@ get_crossover_function(std::set<VisitedCity> &allowed_values) {
     };
 }
 
-void mutate_genotype(CitySequence &genes, double mutation_probability,
-                     Population<VisitedCity> &population) {
-    int variable_amount = genes.size();
+std::function<void(CitySequence &, double, Population<VisitedCity> &)>
+get_mutate_function(int idx_first_city) {
+    return [idx_first_city](CitySequence &genes, double mutation_probability,
+                            Population<VisitedCity> &population) {
+        int variable_amount = genes.size();
 
-    // iterating over each gene
-    for (int j = 0; j < variable_amount; ++j) {
-        // random chance to mutate gene
-        double x = population.GetRandomNormalizedDouble();
+        // iterating over each gene
+        for (int j = 0; j < variable_amount; ++j) {
+            // random chance to mutate gene
+            double x = population.GetRandomNormalizedDouble();
 
-        if (x < mutation_probability) {
-            int swapIndex = population.GetRandomGeneValue(0);
-            // TODO: do not swap starting point if provided
-            // make sure we dont swap in place
-            /* what was that? while for one loop, using idx 1 to size?
-            while (swapIndex == j) {
-                ++swapIndex;
-                if (swapIndex == variable_amount + 1) swapIndex = 1;
-            }*/
-            if (swapIndex == j) {
-                ++swapIndex;
-                if (swapIndex == variable_amount) swapIndex = 0;
+            if (x < mutation_probability) {
+                int swapIndex = population.GetRandomGeneValue(0);
+                // TODO: do not swap starting point if provided
+                // make sure we dont swap in place
+                /* what was that? while for one loop, using idx 1 to size?
+                while (swapIndex == j) {
+                    ++swapIndex;
+                    if (swapIndex == variable_amount + 1) swapIndex = 1;
+                }*/
+                if (swapIndex == j) {
+                    ++swapIndex;
+                    if (swapIndex == variable_amount) swapIndex = 0;
+                }
+                std::swap(genes[j], genes[swapIndex]);
             }
-            std::swap(genes[j], genes[swapIndex]);
         }
-    }
+        if (idx_first_city != -1) {
+            int firstCityIndex = 0;
+            for (int j = 0; j < variable_amount; ++j) {
+                if (genes[j] == idx_first_city) {
+                    firstCityIndex = j;
+                }
+            }
+            std::swap(genes[0], genes[firstCityIndex]);
+        }
+    };
 }
 
 void print_path(const Genotype<VisitedCity> &path,
@@ -516,8 +528,8 @@ int main(int argc, char *argv[]) {
     // Fitnesses are negative, so 0 (meaning no distance is traversed at all) would be ideal
     std::cout << "starting evolution with " << iterations << " generations..." << std::endl;
     population.evolve(get_initialization_function(cluster, startIdx),
-                      get_evaluation_function(node_distances, circle), mutate_genotype,
-                      get_crossover_function(cluster), 0);
+                      get_evaluation_function(node_distances, circle),
+                      get_mutate_function(startIdx), get_crossover_function(cluster), 0);
 
     population.print_result();
     auto path = population.GetBestGenotype();
