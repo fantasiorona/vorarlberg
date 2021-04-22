@@ -1,8 +1,8 @@
 CC=g++
 CFLAGS=-O3 -Wall
 
-test: ms.out
-	./ms.out 1 && sleep 2 && ./ms.out 2 && sleep 2 && ./ms.out 3
+test: tpp.out
+	./tpp.out 0 1 2 4 6 9 12 15 18 19 -i 1000 -c
 
-ms.out:
-	$(CC) src/main.cpp src/Population.h src/Genotype.h -o ms.out
+tpp.out:
+	$(CC) src/tpp.cpp src/Population.h src/Genotype.h -o tpp.out
