@@ -6,6 +6,7 @@ Apply a parallel approach (mpich) to the multimodal problem of the Ackley’s func
 #include "Population.h"
 
 #include <chrono>
+#include <mpi.h>
 
 void initialze_genotype(std::vector<int> &genes);
 double evaluate_genotype(std::vector<int> &genes);
@@ -39,9 +40,17 @@ int main(int argc, char **argv) {
     crossoverPositionSequence1.resize(variableCount);
     crossoverPositionSequence2.resize(variableCount);
 
+    // Initialize the MPI environment
+    int rank, size;
+    MPI_Init(&argc, &argv);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
     // Evolve the population
     // TODO: implement evolve function without perfect fitness?
     population.evolve(initialze_genotype, evaluate_genotype, mutate_genotype, crossover_genotypes);
+
+    MPI_Finalize();
 
     // Print the result
     auto stop = std::chrono::high_resolution_clock::now();
