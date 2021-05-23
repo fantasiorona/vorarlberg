@@ -208,7 +208,7 @@ void initialze_genotype(std::vector<int> &genes) {
     std::vector<bool> usedValues(variableAmount, false);
     // Set the genes to random numbers
     for (int gene = 0; gene < variableAmount; gene++) {
-        int value = population.GetRandomGeneValue(gene);
+        int value = round(population.GetRandomGeneValue(gene));
         // counting up if value is already in use, so we never get duplicate values
         while (usedValues[value - 1]) {
             ++value;
@@ -228,7 +228,7 @@ void mutate_genotype(std::vector<int> &genes, double mutationProbability, Popula
         // random chance to mutate gene
         double x = population.GetRandomNormalizedDouble();
         if (x < mutationProbability) {
-            int swapIndex = population.GetRandomGeneValue(0) - 1;
+            int swapIndex = round(population.GetRandomGeneValue(0)) - 1;
             // make sure we dont swap in place
             while (swapIndex == j) {
                 ++swapIndex;
@@ -286,7 +286,7 @@ void crossover_genotypes(std::vector<int> &genes1, std::vector<int> &genes2, Pop
         }
     }
     // crossover afterwards is a simple swap operation with a randomly defined cutoff point
-    int cutoff_point = population.GetRandomGeneValue(0) - 1;
+    int cutoff_point = round(population.GetRandomGeneValue(0)) - 1;
     for (int i = cutoff_point; i < geneAmount; ++i) {
         std::swap(crossoverInverseSequence1[i], crossoverInverseSequence2[i]);
     }

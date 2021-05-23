@@ -42,6 +42,22 @@ class Population {
         random_gene_index = std::uniform_int_distribution<int>(0, variable_count - 1);
     }
 
+    Population(std::vector<T> lower_gene_bound, std::vector<T> upper_gene_bound,
+               unsigned int max_generations, unsigned int size, double crossover_probability,
+               double mutation_probability)
+        : max_generations(max_generations), size(size),
+          crossover_probability(crossover_probability), mutation_probability(mutation_probability),
+          mersenne_twister_engine(random_device()), random_normalized_double(0.0, 1.0),
+          upper_gene_bound(upper_gene_bound), lower_gene_bound(lower_gene_bound) {
+
+        genotypes.resize(size);
+        new_genotypes.resize(size);
+
+        // need to set values manually if not read from file
+        variable_count = lower_gene_bound.size();
+        random_gene_index = std::uniform_int_distribution<int>(0, variable_count - 1);
+    }
+
     // Evolve all generations and print intermediate results
     void evolve(
         std::function<void(std::vector<T> &)> initialization_function,
@@ -53,6 +69,43 @@ class Population {
         // moved this here because to define initialization_function we need functionality from
         // population object, so we can't do it in constructor
         // TODO: think about a smarter solution
+        initialize_genotypes(initialization_function);
+        // Initial evaluation (this is called within the generation functions later)
+        evaluate_all_fitnesses(evaluation_function);
+        remember_best_genotype();
+
+        // std::cout << "starting population:" << std::endl;
+        // print_population();
+
+        for (unsigned int generation = 0; generation < max_generations; generation++) {
+            create_new_population();
+
+            crossover_population(crossover_function);
+            mutate_population(mutation_function);
+
+            // std::cout << "current population (after xover and mutate):" << std::endl;
+            // print_population();
+
+            evaluate_all_fitnesses(evaluation_function);
+            elitist();
+
+            report(generation);
+
+            if (current_best_genotype.fitness == perfect_fitness) return;
+        }
+    }
+
+    // Evolve all generations and print intermediate results
+    void evolve(
+        std::function<void(std::vector<T> &)> initialization_function,
+        std::function<double(std::vector<T> &)> evaluation_function,
+        std::function<void(std::vector<T> &, double, Population<T> &)> mutation_function,
+        std::function<void(std::vector<T> &, std::vector<T> &, Population<T> &)> crossover_function,
+        double perfect_fitness) {
+
+#ifdef VERBOSE
+        std::cout << "Population genoms intialized to: " << std::endl;
+#endif
         initialize_genotypes(initialization_function);
         // Initial evaluation (this is called within the generation functions later)
         evaluate_all_fitnesses(evaluation_function);
@@ -121,15 +174,21 @@ class Population {
             // using round because otherwise upperbound will only be returned when we get
             // exactly 1.0 with GetRandomNormalizedDouble() when using int
             // TODO: does this work with doubles?
-            return round(GetRandomNormalizedDouble() *
-                             (upper_gene_bound[index] - lower_gene_bound[index]) +
-                         lower_gene_bound[index]);
+            return GetRandomNormalizedDouble() *
+                       (upper_gene_bound[index] - lower_gene_bound[index]) +
+                   lower_gene_bound[index];
         else {
             // TODO: Should be renamed to GetRandomGeneIndex; otherwise this should return
             // allowed_values[random_index] (but there's actually no use case for that atm)
             int random_index = floor(GetRandomNormalizedDouble() * variable_count);
             return random_index;
         }
+    }
+
+    // Return a random int between 0 and the number of variables minus one, to be used as an index
+    // for gene arrays
+    unsigned int get_random_gene_index() {
+        return random_gene_index(mersenne_twister_engine);
     }
 
   private:
@@ -196,12 +255,6 @@ class Population {
             genotype.set_variable_count(variable_count);
             initialization_function(genotype.genes);
         }
-    }
-
-    // Return a random int between 0 and the number of variables minus one, to be used as an index
-    // for gene arrays
-    unsigned int get_random_gene_index() {
-        return random_gene_index(mersenne_twister_engine);
     }
 
     /// Iterates through the population and crosses over randomly selected pairs.

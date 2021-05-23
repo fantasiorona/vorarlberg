@@ -1,58 +1,72 @@
 /* ==============================================================================================
 Multimodal Problem
 
-Apply a parallel approach (mpich) to the multimodal problem of the Ackley’s function.
+Apply a parallel approach (mpich) to the multimodal problem of the Ackleyï¿½s function.
 ==============================================================================================*/
+// TODO: Run more than one population in parallel and switch out genoms at certain points
+// TODO: Run on cluster with mpich
+// TODO: think about better crossover maybe?
+// TODO: Mabye try different versions of mutate and init functions for different populations
+//#define VERBOSE
 #include "Population.h"
 
 #include <chrono>
 #define _USE_MATH_DEFINES
 #include <math.h>
-#include <mpi.h>
+//#include <mpi.h>
 
-void initialze_genotype(std::vector<int> &genes);
-double evaluate_genotype(std::vector<int> &genes);
-void mutate_genotype(std::vector<int> &genes, double mutationProbability,
-                     Population<int> &population);
-void crossover_genotypes(std::vector<int> &genes1, std::vector<int> &genes2,
-                         Population<int> &population);
+std::function<void(std::vector<double> &)>
+get_initialization_function(const std::vector<double> &lower_gene_bounds,
+                            const std::vector<double> &upper_gene_bounds);
+double evaluate_genotype(std::vector<double> &genes);
+void mutate_genotype(std::vector<double> &genes, double mutationProbability,
+                     Population<double> &population);
+void crossover_genotypes(std::vector<double> &genes1, std::vector<double> &genes2,
+                         Population<double> &population);
 
-// Declared here so they're re-used in each crossover sequence
-std::vector<int> crossoverInverseSequence1;
-std::vector<int> crossoverInverseSequence2;
-std::vector<int> crossoverPositionSequence1;
-std::vector<int> crossoverPositionSequence2;
+const int maxGenerations = 1000000;
 
-// TODO: Adjust and create input file
-const int maxGenerations = 1000000000;
+// TODO: Vary this for different populations
 const int populationSize = 20;
-const float crossoverChance = 0.8;
-const float mutationChance = 0.05;
-const std::string file = "inputs/.....filename.....";
 
-Population<int> population(file, maxGenerations, populationSize, crossoverChance, mutationChance);
+// TODO: Vary this for different populations
+const float crossoverChance = 0.8;
+
+// TODO: Vary this for different populations
+const float mutationChance = 0.5;
+
+// in what area we try to find the global minima
+// assumed to always be a square (or higher dimensional equivalent) with center of (0/0)
+const double bound_extents = 5.0;
+// in how many dimensions we want to build the ackley function
+const unsigned int ackley_parameter = 4;
+
+// TODO: Vary this for different populations
+// how much we want to mutate values by (adds a value between -max_mutation_step and
+// +max_mutation_step to current value)
+const double max_mutation_step = 1.0;
 
 int main(int argc, char **argv) {
     auto start = std::chrono::high_resolution_clock::now();
+    std::vector<double> lower_gene_bounds(ackley_parameter, -bound_extents);
+    std::vector<double> upper_gene_bounds(ackley_parameter, bound_extents);
+    ;
+    Population<double> population(lower_gene_bounds, upper_gene_bounds, maxGenerations,
+                                  populationSize, crossoverChance, mutationChance);
 
-    // adjusting size according to variable count
-    int variableCount = population.GetVariableCount();
-    crossoverInverseSequence1.resize(variableCount);
-    crossoverInverseSequence2.resize(variableCount);
-    crossoverPositionSequence1.resize(variableCount);
-    crossoverPositionSequence2.resize(variableCount);
-
+    // TODO: outcommented for now to test locally without mpich
     // Initialize the MPI environment
-    int rank, size;
-    MPI_Init(&argc, &argv);
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    // int rank, size;
+    // MPI_Init(&argc, &argv);
+    // MPI_Comm_size(MPI_COMM_WORLD, &size);
+    // MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     // Evolve the population
-    // TODO: implement evolve function without perfect fitness?
-    population.evolve(initialze_genotype, evaluate_genotype, mutate_genotype, crossover_genotypes);
+    population.evolve(get_initialization_function(lower_gene_bounds, upper_gene_bounds),
+                      evaluate_genotype, mutate_genotype, crossover_genotypes, 0.0);
 
-    MPI_Finalize();
+    // TODO: outcommented for now to test locally without mpich
+    // MPI_Finalize();
 
     // Print the result
     auto stop = std::chrono::high_resolution_clock::now();
@@ -61,37 +75,49 @@ int main(int argc, char **argv) {
     int milliseconds = (duration.count() - (seconds * 1000000)) / 1000;
     int microseconds = (duration.count() - (seconds * 1000000) - (milliseconds * 1000));
 
-    std::cout << std::endl << std::endl << "Result for " << file << ":" << std::endl;
     std::cout << "Settings: " << std::endl;
     std::cout << "     Max generations:    " << maxGenerations << std::endl;
     std::cout << "     Populations size:   " << populationSize << std::endl;
     std::cout << "     Crossover chance:   " << crossoverChance << std::endl;
     std::cout << "     Mutation chance:    " << mutationChance << std::endl;
+    std::cout << "     Lower Gene Bounds: ";
+    for (auto gene : lower_gene_bounds)
+        std::cout << gene << " ";
+    std::cout << std::endl;
+    std::cout << "     Upper Gene Bounds: ";
+    for (auto gene : upper_gene_bounds)
+        std::cout << gene << " ";
+    std::cout << std::endl;
     std::cout << "Took: " << seconds << "s " << milliseconds << "ms " << microseconds << "us"
               << std::endl
               << std::endl;
-    Genotype<int> bestMember = population.GetBestGenotype();
+    Genotype<double> bestMember = population.GetBestGenotype();
     population.print_result();
 }
 
-// TODO: check if this is correct
-void initialze_genotype(std::vector<int> &genes) {
-    int variableAmount = genes.size();
-    std::vector<bool> usedValues(variableAmount, false);
-    // Set the genes to random numbers
-    for (int gene = 0; gene < variableAmount; gene++) {
-        int value = population.GetRandomGeneValue(gene);
-        // counting up if value is already in use, so we never get duplicate values
-        while (usedValues[value - 1]) {
-            ++value;
-            if (value == variableAmount + 1) value = 1;
+std::function<void(std::vector<double> &)>
+get_initialization_function(const std::vector<double> &lower_gene_bounds,
+                            const std::vector<double> &upper_gene_bounds) {
+    return [lower_gene_bounds, upper_gene_bounds](std::vector<double> &genes) {
+        int variableAmount = genes.size();
+        // Set the genes to random numbers
+        for (int gene = 0; gene < variableAmount; gene++) {
+            float r = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+            // finding a random value between both bounds
+            double value =
+                lower_gene_bounds[gene] + (upper_gene_bounds[gene] - lower_gene_bounds[gene]) * r;
+            genes[gene] = value;
+#ifdef VERBOSE
+            std::cout << genes[gene] << ", ";
+#endif
         }
-        usedValues[value - 1] = true;
-        genes[gene] = value;
-    }
+#ifdef VERBOSE
+        std::cout << std::endl;
+#endif
+    };
 }
 
-double evaluate_genotype(std::vector<int> &genes) {
+double evaluate_genotype(std::vector<double> &genes) {
     double a = 20;
     double b = 0.2;
     double c = 2.0 * M_PI;
@@ -108,96 +134,64 @@ double evaluate_genotype(std::vector<int> &genes) {
     // ackley function
     double result = -a * exp(-b * sqrt(sum1 / d)) - exp(sum2 / d) + a + exp(1.0);
 
-    // TODO: evaluate
+    // returning minus absolute value because we know best value would be 0, so everything that is
+    // bigger or smaller is equaly bad
+    // minus because library assumes higer value is better fitness
+    return -abs(result);
 }
 
 // swap genes randomly without any constraints
-void mutate_genotype(std::vector<int> &genes, double mutationProbability,
-                     Population<int> &population) {
+void mutate_genotype(std::vector<double> &genes, double mutationProbability,
+                     Population<double> &population) {
     int variableAmount = genes.size();
     // iterating over each gene
     for (int j = 0; j < variableAmount; ++j) {
         // random chance to mutate gene
         double x = population.GetRandomNormalizedDouble();
         if (x < mutationProbability) {
-            int swapIndex = population.GetRandomGeneValue(0) - 1;
-            // make sure we dont swap in place
-            while (swapIndex == j) {
-                ++swapIndex;
-                if (swapIndex == variableAmount + 1) swapIndex = 1;
-            }
-            std::swap(genes[j], genes[swapIndex]);
+            // adding a random value in mutation_step range to current value
+            double value =
+                genes[j] + (population.GetRandomNormalizedDouble() * 2.0 - 1.0) * max_mutation_step;
+#ifdef VERBOSE
+            std::cout << "Mutating gene of value " << genes[j] << " to value " << value
+                      << std::endl;
+#endif
+            genes[j] = value;
         }
     }
 }
 
-// TODO: check if this is correct
-void crossover_genotypes(std::vector<int> &genes1, std::vector<int> &genes2,
-                         Population<int> &population) {
+void crossover_genotypes(std::vector<double> &genes1, std::vector<double> &genes2,
+                         Population<double> &population) {
+
     size_t geneAmount = genes1.size();
-
-    // iterate over each value
-    for (int i = 0; i < geneAmount; ++i) {
-        // initialize to zero
-        crossoverInverseSequence1[i] = 0;
-        crossoverInverseSequence2[i] = 0;
-        bool found1 = false;
-        bool found2 = false;
-        // for each value we start at the left
-        for (int j = 0; j < geneAmount; ++j) {
-            // and continue until we find the value
-            if (!found1) {
-                // if we pass a bigger value we increment
-                if (genes1[j] > i + 1) {
-                    crossoverInverseSequence1[i] = crossoverInverseSequence1[i] + 1;
-                }
-                // stop when we find the value
-                if (genes1[j] == i + 1) {
-                    found1 = true;
-                }
-            }
-            // do same for the second parent
-            if (!found2) {
-                if (genes2[j] > i + 1) {
-                    crossoverInverseSequence2[i] = crossoverInverseSequence2[i] + 1;
-                }
-                if (genes2[j] == i + 1) {
-                    found2 = true;
-                }
-            }
-        }
-    }
-    // crossover afterwards is a simple swap operation with a randomly defined cutoff point
-    int cutoff_point = population.GetRandomGeneValue(0) - 1;
+    // crossover is a simple swap operation with a randomly defined cutoff point
+    int cutoff_point = population.get_random_gene_index();
+#ifdef VERBOSE
+    std::cout << "Genes before Crossover: " << std::endl;
+    std::cout << "    Gene1: ";
+    for (auto gene : genes1)
+        std::cout << gene << ", ";
+    std::cout << std::endl;
+    std::cout << "    Gene2: ";
+    for (auto gene : genes2)
+        std::cout << gene << ", ";
+    std::cout << std::endl;
+    std::cout << "Crossing over at point: " << cutoff_point << ": " << std::endl;
+#endif
     for (int i = cutoff_point; i < geneAmount; ++i) {
-        std::swap(crossoverInverseSequence1[i], crossoverInverseSequence2[i]);
-    }
-    // translate back to actual genes
-    // we start with creating a position vector
-    // this happens by counting greater or equal elements to the right of the current value
-    // this is basically the inverse operation to the inverse sequence creation and gives the
-    // information where each value is positioned in the gene vector
-    for (int i = geneAmount - 1; i >= 0; --i) {
-        // initialaze to current inverse value
-        crossoverPositionSequence1[i] = crossoverInverseSequence1[i];
-        crossoverPositionSequence2[i] = crossoverInverseSequence2[i];
-        // for each value to the right
-        for (int j = i + 1; j < geneAmount; ++j) {
-            // increase if its bigger or equal
-            if (crossoverPositionSequence1[j] >= crossoverPositionSequence1[i]) {
-                crossoverPositionSequence1[j] = crossoverPositionSequence1[j] + 1;
-            }
-            // do the same for the other parent
-            if (crossoverPositionSequence2[j] >= crossoverPositionSequence2[i]) {
-                crossoverPositionSequence2[j] = crossoverPositionSequence2[j] + 1;
-            }
-        }
+        std::swap(genes1[i], genes2[i]);
     }
 
-    // actually create genes by using the position information to find the position of the value
-    // add 1 because values are from 1-9 while vector indizes are from 0-8
-    for (int i = 0; i < geneAmount; ++i) {
-        genes1[crossoverPositionSequence1[i]] = i + 1;
-        genes2[crossoverPositionSequence2[i]] = i + 1;
-    }
+#ifdef VERBOSE
+    std::cout << "Genes after Crossover: " << std::endl;
+    std::cout << "    Gene1: ";
+    for (auto gene : genes1)
+        std::cout << gene << ", ";
+    std::cout << std::endl;
+    std::cout << "    Gene2: ";
+    for (auto gene : genes2)
+        std::cout << gene << ", ";
+    std::cout << std::endl;
+#endif
 }

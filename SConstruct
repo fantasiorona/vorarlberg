@@ -20,6 +20,8 @@ else:
 
 ms_files = ["src/ms.cpp"]
 tpp_files = ["src/tpp.cpp"]
+mm_files = ["src/mm.cpp"]
 
 Program('ms' + program_ending, ms_files)
 Program('tpp' + program_ending, tpp_files)
+Program('mm' + program_ending, mm_files)
