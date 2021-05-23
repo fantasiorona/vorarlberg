@@ -6,6 +6,8 @@ Apply a parallel approach (mpich) to the multimodal problem of the Ackley’s func
 #include "Population.h"
 
 #include <chrono>
+#define _USE_MATH_DEFINES
+#include <math.h>
 #include <mpi.h>
 
 void initialze_genotype(std::vector<int> &genes);
@@ -90,7 +92,23 @@ void initialze_genotype(std::vector<int> &genes) {
 }
 
 double evaluate_genotype(std::vector<int> &genes) {
-    // TODO: implement ackley function
+    double a = 20;
+    double b = 0.2;
+    double c = 2.0 * M_PI;
+    double d = genes.size();
+
+    double sum1 = 0.0;
+    double sum2 = 0.0;
+
+    for (int i = 0; i < d; i++) {
+        sum1 += genes[i] * genes[i];
+        sum2 += cos(c * (double)genes[i]);
+    }
+
+    // ackley function
+    double result = -a * exp(-b * sqrt(sum1 / d)) - exp(sum2 / d) + a + exp(1.0);
+
+    // TODO: evaluate
 }
 
 // swap genes randomly without any constraints
