@@ -13,7 +13,7 @@ Apply a parallel approach (mpich) to the multimodal problem of the Ackley�s fu
 #include <chrono>
 #define _USE_MATH_DEFINES
 #include <math.h>
-//#include <mpi.h>
+#include <mpi.h>
 
 std::function<void(std::vector<double> &)>
 get_initialization_function(const std::vector<double> &lower_gene_bounds,
@@ -46,27 +46,22 @@ const unsigned int ackley_parameter = 4;
 // +max_mutation_step to current value)
 const double max_mutation_step = 1.0;
 
+// MPI variables
+const int populationAmnt = 4; // should be a multiple of the Amount of processes we use
+int procId, procAmnt, mpiError;
+MPI_Status status;
+
 int main(int argc, char **argv) {
     auto start = std::chrono::high_resolution_clock::now();
     std::vector<double> lower_gene_bounds(ackley_parameter, -bound_extents);
     std::vector<double> upper_gene_bounds(ackley_parameter, bound_extents);
-    ;
+
     Population<double> population(lower_gene_bounds, upper_gene_bounds, maxGenerations,
                                   populationSize, crossoverChance, mutationChance);
-
-    // TODO: outcommented for now to test locally without mpich
-    // Initialize the MPI environment
-    // int rank, size;
-    // MPI_Init(&argc, &argv);
-    // MPI_Comm_size(MPI_COMM_WORLD, &size);
-    // MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     // Evolve the population
     population.evolve(get_initialization_function(lower_gene_bounds, upper_gene_bounds),
                       evaluate_genotype, mutate_genotype, crossover_genotypes, 0.0);
-
-    // TODO: outcommented for now to test locally without mpich
-    // MPI_Finalize();
 
     // Print the result
     auto stop = std::chrono::high_resolution_clock::now();
@@ -93,6 +88,90 @@ int main(int argc, char **argv) {
               << std::endl;
     Genotype<double> bestMember = population.GetBestGenotype();
     population.print_result();
+}
+
+// TODO: Is this even how we should do this????
+int MPImain(int argc, char **argv) {
+    auto start = std::chrono::high_resolution_clock::now();
+    std::vector<double> lower_gene_bounds(ackley_parameter, -bound_extents);
+    std::vector<double> upper_gene_bounds(ackley_parameter, bound_extents);
+
+    std::vector<Population<double>> populations;
+    for (int i = 0; i < populationAmnt; i++) {
+        Population<double> population(lower_gene_bounds, upper_gene_bounds, maxGenerations,
+                                      populationSize, crossoverChance, mutationChance);
+        populations.push_back(population);
+    }
+
+    // Initialize the MPI environment
+    mpiError = MPI_Init(&argc, &argv);
+    MPI_Comm_size(MPI_COMM_WORLD, &procAmnt);
+    MPI_Comm_rank(MPI_COMM_WORLD, &procId);
+
+    // Evolve the population
+    for (int i = 0; i < populationAmnt / procAmnt; i++) {
+        int index = procId + (i * procAmnt);
+        populations[index].evolve(get_initialization_function(lower_gene_bounds, upper_gene_bounds),
+                                  evaluate_genotype, mutate_genotype, crossover_genotypes, 0.0);
+    }
+
+    // at this point the evolutions should be calculated
+    double *val;
+    if (procId == 0) {
+        for (int source = 1; source < populationAmnt - 1; source++) {
+            mpiError = MPI_Recv(&val, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &status);
+            // TODO: evaluate genotypes and switch them??
+
+#ifdef VERBOSE
+            std::cout << "Received " << val << std::endl;
+#endif
+        }
+    } else {
+        for (int i = 0; i < populationAmnt / procAmnt; i++) {
+            int index = procId + (i * procAmnt);
+
+            Genotype<double> bestMember = populations[index].GetBestGenotype();
+            std::vector<double> genes = bestMember.genes;
+
+            MPI_Send(&genes, genes.size(), MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
+        }
+    }
+    int bestIndex = procId;
+    if (procId == 0) {
+        // Evolve the population
+        for (int i = 0; i < populationAmnt / procAmnt; i++) {
+            int index = procId + (i * procAmnt);
+            // TODO: find best genotype handled by process 0 and set bestIndex to its index
+            Genotype<double> bestMember = populations[index].GetBestGenotype();
+        }
+    }
+    mpiError = MPI_Finalize();
+
+    // Print the result
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+    int seconds = duration.count() / 1000000;
+    int milliseconds = (duration.count() - (seconds * 1000000)) / 1000;
+    int microseconds = (duration.count() - (seconds * 1000000) - (milliseconds * 1000));
+
+    std::cout << "Settings: " << std::endl;
+    std::cout << "     Max generations:    " << maxGenerations << std::endl;
+    std::cout << "     Populations size:   " << populationSize << std::endl;
+    std::cout << "     Crossover chance:   " << crossoverChance << std::endl;
+    std::cout << "     Mutation chance:    " << mutationChance << std::endl;
+    std::cout << "     Lower Gene Bounds: ";
+    for (auto gene : lower_gene_bounds)
+        std::cout << gene << " ";
+    std::cout << std::endl;
+    std::cout << "     Upper Gene Bounds: ";
+    for (auto gene : upper_gene_bounds)
+        std::cout << gene << " ";
+    std::cout << std::endl;
+    std::cout << "Took: " << seconds << "s " << milliseconds << "ms " << microseconds << "us"
+              << std::endl
+              << std::endl;
+    Genotype<double> bestMember = populations[bestIndex].GetBestGenotype();
+    populations[bestIndex].print_result();
 }
 
 std::function<void(std::vector<double> &)>
