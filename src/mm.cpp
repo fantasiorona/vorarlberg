@@ -12,9 +12,9 @@ Apply a parallel approach (mpich) to the multimodal problem of the Ackley�s fu
 
 #include <chrono>
 #define _USE_MATH_DEFINES
+#include <cstring>
 #include <math.h>
 #include <mpi.h>
-#include <cstring>
 
 std::function<void(std::vector<double> &)>
 get_initialization_function(const std::vector<double> &lower_gene_bounds,
@@ -60,13 +60,13 @@ int main(int argc, char **argv) {
     std::vector<double> lower_gene_bounds(ackley_parameter, -bound_extents);
     std::vector<double> upper_gene_bounds(ackley_parameter, bound_extents);
 
-    int procId, procAmnt;
+    int procId, procAmnt, mpiError;
     MPI_Status status = {};
 
-    MPI_Init( &argc, &argv );
+    MPI_Init(&argc, &argv);
 
-    MPI_Comm_size( MPI_COMM_WORLD, &procAmnt );
-    MPI_Comm_rank( MPI_COMM_WORLD, &procId );
+    MPI_Comm_size(MPI_COMM_WORLD, &procAmnt);
+    MPI_Comm_rank(MPI_COMM_WORLD, &procId);
 
     int leftNbr = procId - 1;
     int rightNbr = procId + 1;
@@ -77,12 +77,14 @@ int main(int argc, char **argv) {
         rightNbr = 0;
     }
 
-    std::cout << "Proc ID: " << procId << " left: " << leftNbr << ", right: " << rightNbr << std::endl;
+    std::cout << "Proc ID: " << procId << " left: " << leftNbr << ", right: " << rightNbr
+              << std::endl;
 
-    std::vector<Population<double>*> populations;
+    std::vector<Population<double> *> populations;
     for (int i = 0; i < procAmnt; i++) {
-        auto population = new Population<double>(lower_gene_bounds, upper_gene_bounds, maxGenerations,
-                                      populationSize, crossoverChance, mutationChance);
+        auto population =
+            new Population<double>(lower_gene_bounds, upper_gene_bounds, maxGenerations,
+                                   populationSize, crossoverChance, mutationChance);
         populations.push_back(population);
     }
 
@@ -92,26 +94,39 @@ int main(int argc, char **argv) {
         auto population = populations[procId];
 
         // Evolve all populations
-        population->evolveParallel(get_initialization_function(lower_gene_bounds, upper_gene_bounds),
-                            evaluate_genotype, mutate_genotype, crossover_genotypes, 0.0, procId);
+        population->evolveParallel(
+            get_initialization_function(lower_gene_bounds, upper_gene_bounds), evaluate_genotype,
+            mutate_genotype, crossover_genotypes, 0.0, procId);
 
         // Prepare data for sending
         for (int i = 0; i < population->getGenotypes().size(); i++) {
-            auto& genotype = population->getGenotypes()[i];
+            auto &genotype = population->getGenotypes()[i];
             data->fitness = genotype.fitness;
             data->relative_fitness = genotype.relative_fitness;
             data->cumulative_fitness = genotype.cumulative_fitness;
             memcpy(data->genes, genotype.genes.data(), sizeof(double) * 4);
             data->fitness = genotype.fitness;
         }
-        
-	    MPI_Send(&data, sizeof(data[0]) * 20, MPI_BYTE, rightNbr, 0, MPI_COMM_WORLD);
+
+        MPI_Send(data, sizeof(data[0]) * 20, MPI_BYTE, rightNbr, 0, MPI_COMM_WORLD);
         std::cout << "sent: " << data[0].genes[0] << " to " << rightNbr << std::endl;
-        MPI_Recv(&data, sizeof(data[0]) * 20, MPI_BYTE, leftNbr, 0, MPI_COMM_WORLD, &status);
+        mpiError =
+            MPI_Recv(data, sizeof(data[0]) * 20, MPI_BYTE, leftNbr, 0, MPI_COMM_WORLD, &status);
         std::cout << "received: " << data[0].genes[0] << " from " << leftNbr << std::endl;
         std::cout << status.MPI_SOURCE << ", err " << status.MPI_ERROR << std::endl;
 
-        //populations[procId]->ReplaceWorstGenotypes(populations[j]->getGenotypes());
+        if (mpiError == MPI_SUCCESS) {
+            std::vector<Genotype<double>> genotypes(20);
+
+            for (int i = 0; i < 20; i++) {
+                genotypes[i].fitness = data->fitness;
+                genotypes[i].relative_fitness = data->relative_fitness;
+                genotypes[i].cumulative_fitness = data->cumulative_fitness;
+                genotypes[i].genes.resize(4);
+                memcpy(genotypes[i].genes.data(), data->genes, sizeof(double) * 4);
+            }
+            populations[procId]->ReplaceWorstGenotypes(genotypes);
+        }
     }
 
     // Print the result
@@ -138,9 +153,10 @@ int main(int argc, char **argv) {
               << std::endl
               << std::endl;
 
-    std::cout << "--------- POPULATION #" << procId << " ---------" << std::endl << std::endl;
     Genotype<double> bestMember = populations[procId]->GetBestGenotype();
-    populations[procId]->print_result();
+    populations[procId]->print_result(procId);
+
+    mpiError = MPI_Finalize();
 }
 
 // TODO: Is this even how we should do this????

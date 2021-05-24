@@ -171,11 +171,11 @@ class Population {
             evaluate_all_fitnesses(evaluation_function);
             elitist();
 
-            if (current_best_genotype.fitness == perfect_fitness
-                || currentGeneration == max_generations) {
-                    isFinished = true;
-                    return;
-                };
+            if (current_best_genotype.fitness == perfect_fitness ||
+                currentGeneration == max_generations) {
+                isFinished = true;
+                return;
+            };
 
             currentGeneration++;
         }
@@ -184,7 +184,12 @@ class Population {
     }
 
     // Print the best variable values and the corresponding fitness
-    void print_result() const {
+    void print_result(int id = -1) const {
+
+        if (id != -1) {
+            std::cout << "\n--------- POPULATION #" << id << " ---------\n\n";
+        }
+
         std::cout << "\n";
         std::cout << "  Best member:\n";
         std::cout << "\n";
@@ -261,7 +266,7 @@ class Population {
         return random_gene_index(mersenne_twister_engine);
     }
 
-    std::vector<Genotype<T>>& getGenotypes() {
+    std::vector<Genotype<T>> &getGenotypes() {
         return genotypes;
     }
 
