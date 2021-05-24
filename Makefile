@@ -1,4 +1,4 @@
-CXX=mpic++
+CXX=mpicxx.mpich
 CXXFLAGS=-O3 -Wall -std=c++11
 
 run: mm.out
