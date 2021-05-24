@@ -172,11 +172,11 @@ class Population {
             elitist();
 
             report(currentGeneration);
-            if (current_best_genotype.fitness == perfect_fitness
-                || currentGeneration == max_generations) {
-                    isFinished = true;
-                    return;
-                };
+            if (current_best_genotype.fitness == perfect_fitness ||
+                currentGeneration == max_generations) {
+                isFinished = true;
+                return;
+            };
 
             currentGeneration++;
         }
@@ -213,15 +213,22 @@ class Population {
         return current_best_genotype;
     }
 
-    void ReplaceWorstGenotype(Genotype<T> replacementGenotype) {
+    void ReplaceWorstGenotypes(std::vector<Genotype<T>> replacementGenotypes, unsigned int amount) {
         int minFitness = INT32_MAX;
         int minIndex = 0;
-        for (int i = 0; i < genotypes.size(); i++) {
-            if (genotypes[i].fitness < minFitness) {
-                minIndex = i;
-            }
+        sort(genotypes.begin(), genotypes.end(),
+             [](const Genotype<T> &a, const Genotype<T> &b) -> bool {
+                 return a.fitness > b.fitness;
+             });
+
+        std::shuffle(replacementGenotypes.begin(), replacementGenotypes.end(),
+                     mersenne_twister_engine);
+
+        for (int i = 0; i < amount; i++) {
+            genotypes[i] = replacementGenotypes[i];
         }
-        genotypes[minIndex] = replacementGenotype;
+
+        std::cout << "switched " << amount << "populations" << std::endl;
     }
 
     // Return a random double between 0.0 and 1.0
@@ -251,6 +258,10 @@ class Population {
     // for gene arrays
     unsigned int get_random_gene_index() {
         return random_gene_index(mersenne_twister_engine);
+    }
+
+    std::vector<Genotype<T>> getGenotypes() {
+        return genotypes;
     }
 
   private:

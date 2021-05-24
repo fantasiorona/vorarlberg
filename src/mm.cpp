@@ -56,10 +56,11 @@ int main(int argc, char **argv) {
     std::vector<double> lower_gene_bounds(ackley_parameter, -bound_extents);
     std::vector<double> upper_gene_bounds(ackley_parameter, bound_extents);
 
-    std::vector<Population<double>*> populations;
+    std::vector<Population<double> *> populations;
     for (int i = 0; i < populationAmnt; i++) {
-        auto population = new Population<double>(lower_gene_bounds, upper_gene_bounds, maxGenerations,
-                                      populationSize, crossoverChance, mutationChance);
+        auto population =
+            new Population<double>(lower_gene_bounds, upper_gene_bounds, maxGenerations,
+                                   populationSize, crossoverChance, mutationChance);
         populations.push_back(population);
     }
 
@@ -68,8 +69,9 @@ int main(int argc, char **argv) {
     while (!allFinished) {
         // Evolve all populations
         for (int i = 0; i < populationAmnt; i++) {
-            populations[i]->evolveParallel(get_initialization_function(lower_gene_bounds, upper_gene_bounds),
-                                    evaluate_genotype, mutate_genotype, crossover_genotypes, 0.0);
+            populations[i]->evolveParallel(
+                get_initialization_function(lower_gene_bounds, upper_gene_bounds),
+                evaluate_genotype, mutate_genotype, crossover_genotypes, 0.0);
         }
 
         allFinished = true;
@@ -80,7 +82,9 @@ int main(int argc, char **argv) {
 
             // Crossover between the populations
             for (int j = 0; j < populationAmnt; j++) {
-                populations[i]->ReplaceWorstGenotype(populations[j]->GetBestGenotype());
+                if (i != j) {
+                    populations[i]->ReplaceWorstGenotypes(populations[j]->getGenotypes(), 10);
+                }
             }
         }
     }
@@ -145,7 +149,8 @@ int main(int argc, char **argv) {
     if (procId == 0) {
         for (int source = 1; source < populationAmnt - populationAmnt / procAmnt; source++) {
             double genesNum;
-            mpiError = MPI_Recv(&genesNum, 1, MPI_UNSIGNED_LONG, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &status);
+            mpiError = MPI_Recv(&genesNum, 1, MPI_UNSIGNED_LONG, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD,
+&status);
 
             double* genes;
             mpiError = MPI_Recv(genes, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &status);
