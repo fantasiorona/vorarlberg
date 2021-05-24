@@ -5,6 +5,8 @@ import sys
 env = DefaultEnvironment(tools=['default', 'compilation_db'])
 env.CompilationDatabase()
 
+env.Append(CCFLAGS=['-std=c++11'])
+
 if sys.platform.startswith('linux'):
     env.Append(CCFLAGS=['-g', '-O3'])
     program_ending = '.out'
@@ -18,10 +20,10 @@ else:
     host_platform = "Unknown platform: " + sys.platform
     exit(-1)
 
-ms_files = ["src/ms.cpp"]
-tpp_files = ["src/tpp.cpp"]
+#ms_files = ["src/ms.cpp"]
+#tpp_files = ["src/tpp.cpp"]
 mm_files = ["src/mm.cpp"]
 
-Program('ms' + program_ending, ms_files)
-Program('tpp' + program_ending, tpp_files)
+#Program('ms' + program_ending, ms_files)
+#Program('tpp' + program_ending, tpp_files)
 Program('mm' + program_ending, mm_files)

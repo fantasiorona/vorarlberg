@@ -13,7 +13,7 @@ Apply a parallel approach (mpich) to the multimodal problem of the Ackley�s fu
 #include <chrono>
 #define _USE_MATH_DEFINES
 #include <math.h>
-#include <mpi.h>
+//#include <mpi.h>
 
 std::function<void(std::vector<double> &)>
 get_initialization_function(const std::vector<double> &lower_gene_bounds,
@@ -49,19 +49,41 @@ const double max_mutation_step = 1.0;
 // MPI variables
 const int populationAmnt = 4; // should be a multiple of the Amount of processes we use
 int procId, procAmnt, mpiError;
-MPI_Status status;
+// MPI_Status status;
 
 int main(int argc, char **argv) {
     auto start = std::chrono::high_resolution_clock::now();
     std::vector<double> lower_gene_bounds(ackley_parameter, -bound_extents);
     std::vector<double> upper_gene_bounds(ackley_parameter, bound_extents);
 
-    Population<double> population(lower_gene_bounds, upper_gene_bounds, maxGenerations,
-                                  populationSize, crossoverChance, mutationChance);
+    std::vector<Population<double>*> populations;
+    for (int i = 0; i < populationAmnt; i++) {
+        auto population = new Population<double>(lower_gene_bounds, upper_gene_bounds, maxGenerations,
+                                      populationSize, crossoverChance, mutationChance);
+        populations.push_back(population);
+    }
 
-    // Evolve the population
-    population.evolve(get_initialization_function(lower_gene_bounds, upper_gene_bounds),
-                      evaluate_genotype, mutate_genotype, crossover_genotypes, 0.0);
+    bool allFinished = false;
+
+    while (!allFinished) {
+        // Evolve all populations
+        for (int i = 0; i < populationAmnt; i++) {
+            populations[i]->evolveParallel(get_initialization_function(lower_gene_bounds, upper_gene_bounds),
+                                    evaluate_genotype, mutate_genotype, crossover_genotypes, 0.0);
+        }
+
+        allFinished = true;
+        for (int i = 0; i < populationAmnt; i++) {
+            if (!populations[i]->isFinished) {
+                allFinished = false;
+            }
+
+            // Crossover between the populations
+            for (int j = 0; j < populationAmnt; j++) {
+                populations[i]->ReplaceWorstGenotype(populations[j]->GetBestGenotype());
+            }
+        }
+    }
 
     // Print the result
     auto stop = std::chrono::high_resolution_clock::now();
@@ -86,12 +108,16 @@ int main(int argc, char **argv) {
     std::cout << "Took: " << seconds << "s " << milliseconds << "ms " << microseconds << "us"
               << std::endl
               << std::endl;
-    Genotype<double> bestMember = population.GetBestGenotype();
-    population.print_result();
+
+    for (int i = 0; i < populationAmnt; i++) {
+        std::cout << "--------- POPULATION #" << i << " ---------" << std::endl << std::endl;
+        Genotype<double> bestMember = populations[i]->GetBestGenotype();
+        populations[i]->print_result();
+    }
 }
 
 // TODO: Is this even how we should do this????
-int MPImain(int argc, char **argv) {
+/*int MPImain(int argc, char **argv) {
     auto start = std::chrono::high_resolution_clock::now();
     std::vector<double> lower_gene_bounds(ackley_parameter, -bound_extents);
     std::vector<double> upper_gene_bounds(ackley_parameter, bound_extents);
@@ -116,10 +142,15 @@ int MPImain(int argc, char **argv) {
     }
 
     // at this point the evolutions should be calculated
-    double *val;
     if (procId == 0) {
-        for (int source = 1; source < populationAmnt - 1; source++) {
-            mpiError = MPI_Recv(&val, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &status);
+        for (int source = 1; source < populationAmnt - populationAmnt / procAmnt; source++) {
+            double genesNum;
+            mpiError = MPI_Recv(&genesNum, 1, MPI_UNSIGNED_LONG, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &status);
+
+            double* genes;
+            mpiError = MPI_Recv(genes, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &status);
+            std::vector<double> genesVector(genes, genes + genesNum);
+            double fitness = evaluate_genotype(genesVector);
             // TODO: evaluate genotypes and switch them??
 
 #ifdef VERBOSE
@@ -133,7 +164,9 @@ int MPImain(int argc, char **argv) {
             Genotype<double> bestMember = populations[index].GetBestGenotype();
             std::vector<double> genes = bestMember.genes;
 
-            MPI_Send(&genes, genes.size(), MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
+            size_t size = genes.size();
+            MPI_Send(&size, 1, MPI_UNSIGNED_LONG, 0, 0, MPI_COMM_WORLD);
+            MPI_Send(&genes.data(), genes.size(), MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
         }
     }
     int bestIndex = procId;
@@ -172,7 +205,7 @@ int MPImain(int argc, char **argv) {
               << std::endl;
     Genotype<double> bestMember = populations[bestIndex].GetBestGenotype();
     populations[bestIndex].print_result();
-}
+}*/
 
 std::function<void(std::vector<double> &)>
 get_initialization_function(const std::vector<double> &lower_gene_bounds,

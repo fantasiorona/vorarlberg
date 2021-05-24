@@ -14,6 +14,15 @@ class Genotype {
         genes.resize(variable_count);
     }
 
+    Genotype<T>& operator=(const Genotype<T>& other) {
+      fitness = other.fitness;
+      relative_fitness = other.relative_fitness;
+      cumulative_fitness = other.cumulative_fitness;
+      genes = other.genes;
+
+      return *this;
+    }
+
     /// A set of variables
     std::vector<T> genes;
 

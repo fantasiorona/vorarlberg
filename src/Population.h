@@ -9,6 +9,8 @@
 #include <set>
 #include <string>
 
+const int GENERATIONS_PER_RUN = 1000;
+
 template <class T>
 class Population {
   public:
@@ -132,6 +134,54 @@ class Population {
         }
     }
 
+    int currentGeneration = 0;
+    bool isFinished = false;
+
+    // Evolve all generations and print intermediate results
+    void evolveParallel(
+        std::function<void(std::vector<T> &)> initialization_function,
+        std::function<double(std::vector<T> &)> evaluation_function,
+        std::function<void(std::vector<T> &, double, Population<T> &)> mutation_function,
+        std::function<void(std::vector<T> &, std::vector<T> &, Population<T> &)> crossover_function,
+        double perfect_fitness) {
+
+#ifdef VERBOSE
+        std::cout << "Population genoms intialized to: " << std::endl;
+#endif
+
+        if (currentGeneration == 0) {
+            initialize_genotypes(initialization_function);
+            // Initial evaluation (this is called within the generation functions later)
+            evaluate_all_fitnesses(evaluation_function);
+            remember_best_genotype();
+        }
+
+        // std::cout << "starting population:" << std::endl;
+        // print_population();
+
+        for (int i = 0; i < GENERATIONS_PER_RUN; i++) {
+            create_new_population();
+
+            crossover_population(crossover_function);
+            mutate_population(mutation_function);
+
+            // std::cout << "current population (after xover and mutate):" << std::endl;
+            // print_population();
+
+            evaluate_all_fitnesses(evaluation_function);
+            elitist();
+
+            report(currentGeneration);
+            if (current_best_genotype.fitness == perfect_fitness
+                || currentGeneration == max_generations) {
+                    isFinished = true;
+                    return;
+                };
+
+            currentGeneration++;
+        }
+    }
+
     // Print the best variable values and the corresponding fitness
     void print_result() const {
         std::cout << "\n";
@@ -162,6 +212,18 @@ class Population {
     Genotype<T> GetBestGenotype() const {
         return current_best_genotype;
     }
+
+    void ReplaceWorstGenotype(Genotype<T> replacementGenotype) {
+        int minFitness = INT32_MAX;
+        int minIndex = 0;
+        for (int i = 0; i < genotypes.size(); i++) {
+            if (genotypes[i].fitness < minFitness) {
+                minIndex = i;
+            }
+        }
+        genotypes[minIndex] = replacementGenotype;
+    }
+
     // Return a random double between 0.0 and 1.0
     double GetRandomNormalizedDouble() {
         return random_normalized_double(mersenne_twister_engine);
