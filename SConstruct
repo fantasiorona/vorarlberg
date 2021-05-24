@@ -2,7 +2,7 @@
 import sys
 
 # Create the environment and create a Compilation Database for use in VSCodium
-env = DefaultEnvironment(tools=['default', 'compilation_db'])
+env = DefaultEnvironment(CXX="mpic++", tools=['default', 'compilation_db'])
 env.CompilationDatabase()
 
 env.Append(CCFLAGS=['-std=c++11'])

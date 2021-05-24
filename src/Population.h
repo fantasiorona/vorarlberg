@@ -143,7 +143,7 @@ class Population {
         std::function<double(std::vector<T> &)> evaluation_function,
         std::function<void(std::vector<T> &, double, Population<T> &)> mutation_function,
         std::function<void(std::vector<T> &, std::vector<T> &, Population<T> &)> crossover_function,
-        double perfect_fitness) {
+        double perfect_fitness, int procId) {
 
 #ifdef VERBOSE
         std::cout << "Population genoms intialized to: " << std::endl;
@@ -171,15 +171,16 @@ class Population {
             evaluate_all_fitnesses(evaluation_function);
             elitist();
 
-            report(currentGeneration);
-            if (current_best_genotype.fitness == perfect_fitness ||
-                currentGeneration == max_generations) {
-                isFinished = true;
-                return;
-            };
+            if (current_best_genotype.fitness == perfect_fitness
+                || currentGeneration == max_generations) {
+                    isFinished = true;
+                    return;
+                };
 
             currentGeneration++;
         }
+
+        report(currentGeneration - 1, procId);
     }
 
     // Print the best variable values and the corresponding fitness
@@ -260,7 +261,7 @@ class Population {
         return random_gene_index(mersenne_twister_engine);
     }
 
-    std::vector<Genotype<T>> getGenotypes() {
+    std::vector<Genotype<T>>& getGenotypes() {
         return genotypes;
     }
 
@@ -479,7 +480,7 @@ class Population {
     }
 
     // Print some metrics to the console.
-    void report(int generation) {
+    void report(int generation, int procId = -1) {
         if (generation == 0) {
             std::cout << "\n";
             std::cout
@@ -501,6 +502,10 @@ class Population {
         double square_sum = avg * avg * size;
         double stddev = sqrt((sum_square - square_sum) / (size - 1));
         double best_val = current_best_genotype.fitness;
+
+        if (procId != -1) {
+            std::cout << "proc #" << procId << " ";
+        }
 
         std::cout << "  " << std::setw(8) << generation << "  " << std::setw(14) << best_val
                   << "  ";
