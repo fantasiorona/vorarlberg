@@ -1,8 +1,11 @@
-CC=g++
-CFLAGS=-O3 -Wall
+CXX=mpic++
+CXXFLAGS=-O3 -Wall -std=c++11
 
-test: tpp.out
-	./tpp.out 0 1 2 4 6 9 12 15 18 19 -i 1000 -c
+run: mm.out
+	mpiexec -np 4 ./mm.out
 
-tpp.out:
-	$(CC) src/tpp.cpp src/Population.h src/Genotype.h -o tpp.out
+a.out:
+	$(CXX) $(CXXFLAGS) src/mm.cpp src/Population.h src/Genotype.h
+	
+mm.out: a.out
+	mv a.out mm.out

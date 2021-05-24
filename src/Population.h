@@ -220,6 +220,8 @@ class Population {
     }
 
     void ReplaceWorstGenotypes(std::vector<Genotype<T>> replacementGenotypes) {
+        std::cout << "switching " << genotypes.size() / 2 << "populations" << std::endl;
+
         int minFitness = INT32_MAX;
         int minIndex = 0;
         sort(genotypes.begin(), genotypes.end(),
