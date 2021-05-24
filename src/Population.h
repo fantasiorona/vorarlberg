@@ -1,5 +1,6 @@
 #include "Genotype.h"
 
+#include <algorithm>
 #include <fstream>
 #include <functional>
 #include <iomanip>
@@ -8,7 +9,6 @@
 #include <random>
 #include <set>
 #include <string>
-#include <algorithm>
 
 const int GENERATIONS_PER_RUN = 5000;
 
@@ -91,9 +91,9 @@ class Population {
 
             evaluate_all_fitnesses(evaluation_function);
             elitist();
-
+#ifdef VERBOSE
             report(generation);
-
+#endif
             if (current_best_genotype.fitness == perfect_fitness) return;
         }
     }
@@ -129,8 +129,9 @@ class Population {
             evaluate_all_fitnesses(evaluation_function);
             elitist();
 
+#ifdef VERBOSE
             report(generation);
-
+#endif
             if (current_best_genotype.fitness == perfect_fitness) return;
         }
     }
@@ -180,8 +181,9 @@ class Population {
 
             currentGeneration++;
         }
-
+#ifdef VERBOSE
         report(currentGeneration - 1, procId);
+#endif
     }
 
     // Print the best variable values and the corresponding fitness

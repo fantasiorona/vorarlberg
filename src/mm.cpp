@@ -25,7 +25,7 @@ void mutate_genotype(std::vector<double> &genes, double mutationProbability,
 void crossover_genotypes(std::vector<double> &genes1, std::vector<double> &genes2,
                          Population<double> &population);
 
-const int maxGenerations = 1000000;
+const int maxGenerations = 10000000;
 
 // in what area we try to find the global minima
 // assumed to always be a square (or higher dimensional equivalent) with center of (0/0)
@@ -54,7 +54,9 @@ int main(int argc, char **argv) {
 
     MPI_Comm_size(MPI_COMM_WORLD, &procAmnt);
     MPI_Comm_rank(MPI_COMM_WORLD, &procId);
-    
+
+    std::cout << "\nCalculation started on process #" << procId << " ..." << std::endl;
+
     auto start = std::chrono::high_resolution_clock::now();
     std::vector<double> lower_gene_bounds(parameterCount, -bound_extents);
     std::vector<double> upper_gene_bounds(parameterCount, bound_extents);
@@ -80,11 +82,13 @@ int main(int argc, char **argv) {
     // Range 0.5-0.9
     float mutationChance = 0.5f + ((std::rand() % 40) / 100.f);
 
+#ifdef VERBOSE
     std::cout << "Proc ID: " << procId << " left: " << leftNbr << ", right: " << rightNbr
               << std::endl;
+#endif
 
     auto population = new Population<double>(lower_gene_bounds, upper_gene_bounds, maxGenerations,
-                                   populationSize, crossoverChance, mutationChance);
+                                             populationSize, crossoverChance, mutationChance);
 
     auto data = new GenotypeData[populationSize];
     while (!population->isFinished) {
@@ -103,8 +107,10 @@ int main(int argc, char **argv) {
             data->fitness = genotype.fitness;
         }
 
-        MPI_Send(data, sizeof(GenotypeData) * populationSize, MPI_BYTE, rightNbr, 0, MPI_COMM_WORLD);
-        mpiError = MPI_Recv(data, sizeof(GenotypeData) * populationSize, MPI_BYTE, leftNbr, 0, MPI_COMM_WORLD, &status);
+        MPI_Send(data, sizeof(GenotypeData) * populationSize, MPI_BYTE, rightNbr, 0,
+                 MPI_COMM_WORLD);
+        mpiError = MPI_Recv(data, sizeof(GenotypeData) * populationSize, MPI_BYTE, leftNbr, 0,
+                            MPI_COMM_WORLD, &status);
 
         if (mpiError == MPI_SUCCESS) {
             // Create an std::vector<Genotype> from the received data
@@ -132,25 +138,58 @@ int main(int argc, char **argv) {
     int milliseconds = (duration.count() - (seconds * 1000000)) / 1000;
     int microseconds = (duration.count() - (seconds * 1000000) - (milliseconds * 1000));
 
-    std::cout << "Settings: " << std::endl;
-    std::cout << "     Max generations:    " << maxGenerations << std::endl;
-    std::cout << "     Populations size:   " << populationSize << std::endl;
-    std::cout << "     Crossover chance:   " << crossoverChance << std::endl;
-    std::cout << "     Mutation chance:    " << mutationChance << std::endl;
-    std::cout << "     Lower Gene Bounds: ";
-    for (auto gene : lower_gene_bounds)
-        std::cout << gene << " ";
-    std::cout << std::endl;
-    std::cout << "     Upper Gene Bounds: ";
-    for (auto gene : upper_gene_bounds)
-        std::cout << gene << " ";
-    std::cout << std::endl;
-    std::cout << "Took: " << seconds << "s " << milliseconds << "ms " << microseconds << "us"
-              << std::endl
-              << std::endl;
+    Genotype<double> genotype();
 
-    Genotype<double> bestMember = population->GetBestGenotype();
+    // Prepare data for sending
+    double sendData, recvData, bestData;
+    int bestIndex = 0;
+    if (procId != 0) {
+        std::vector<double> genes = population->GetBestGenotype().genes;
+        sendData = evaluate_genotype(genes);
+
+        MPI_Send(&sendData, 1, MPI_DOUBLE, 0, 0,
+                 MPI_COMM_WORLD); // send data to process 0
+    } else {
+        std::vector<double> genes = population->GetBestGenotype().genes;
+        bestData = evaluate_genotype(genes);
+
+        for (int i = 1; i < procAmnt; i++) {
+            mpiError = MPI_Recv(&recvData, 1, MPI_DOUBLE, i, 0, MPI_COMM_WORLD, &status);
+            if (mpiError == MPI_SUCCESS) {
+                if (recvData > bestData) {
+                    bestData = recvData;
+                    bestIndex = i;
+                }
+            }
+        }
+    }
+
+    if (procId == 0) {
+        std::cout << "\nSettings: " << std::endl;
+        std::cout << "     Max generations:    " << maxGenerations << std::endl;
+        std::cout << "     Populations size:   " << populationSize << std::endl;
+        std::cout << "     Crossover chance:   " << crossoverChance << std::endl;
+        std::cout << "     Mutation chance:    " << mutationChance << std::endl;
+        std::cout << "     Lower Gene Bounds: ";
+        for (auto gene : lower_gene_bounds)
+            std::cout << gene << " ";
+        std::cout << std::endl;
+        std::cout << "     Upper Gene Bounds: ";
+        for (auto gene : upper_gene_bounds)
+            std::cout << gene << " ";
+        std::cout << std::endl;
+        std::cout << "Took: " << seconds << "s " << milliseconds << "ms " << microseconds << "us"
+                  << std::endl
+                  << std::endl;
+    }
+
     population->print_result(procId);
+
+    MPI_Bcast(&bestData, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&bestIndex, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+    std::cout << "\nBest overall fitness: " << bestData << " from process #" << bestIndex
+              << std::endl;
 
     mpiError = MPI_Finalize();
 }
@@ -194,9 +233,9 @@ double evaluate_genotype(std::vector<double> &genes) {
     // ackley function
     double result = -a * exp(-b * sqrt(sum1 / d)) - exp(sum2 / d) + a + exp(1.0);
 
-    // returning minus absolute value because we know best value would be 0, so everything that is
-    // bigger or smaller is equaly bad
-    // minus because library assumes higer value is better fitness
+    // returning minus absolute value because we know best value would be 0, so everything that
+    // is bigger or smaller is equaly bad minus because library assumes higer value is better
+    // fitness
     return -abs(result);
 }
 
