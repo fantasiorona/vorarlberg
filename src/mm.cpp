@@ -71,10 +71,8 @@ int main(int argc, char **argv) {
     // Parameters which are varied based on the process
     std::srand(procId);
 
-    const int MAX_POPULATION_SIZE = 30;
-
-    // Range 15-25
-    int populationSize = 15 + (std::rand() % 10);
+    // I'd really like to make this parameter variable as well but I can't 🥲
+    int populationSize = 30;
 
     // Range 0.5-0.9
     float crossoverChance = 0.5f + ((std::rand() % 40) / 100.f);
@@ -106,26 +104,25 @@ int main(int argc, char **argv) {
         }
 
         MPI_Send(data, sizeof(GenotypeData) * populationSize, MPI_BYTE, rightNbr, 0, MPI_COMM_WORLD);
-        mpiError = MPI_Recv(data, sizeof(GenotypeData) * MAX_POPULATION_SIZE, MPI_BYTE, leftNbr, 0, MPI_COMM_WORLD, &status);
+        mpiError = MPI_Recv(data, sizeof(GenotypeData) * populationSize, MPI_BYTE, leftNbr, 0, MPI_COMM_WORLD, &status);
 
-        // if (mpiError == MPI_SUCCESS) {
-        //     // Create an std::vector<Genotype> from the received data
-        //     int count;
-        //     MPI_Get_count(&status, MPI_BYTE, &count);
-        //     count /= sizeof(GenotypeData);
-        //     std::cout << "count: " << count << std::endl;
+        if (mpiError == MPI_SUCCESS) {
+            // Create an std::vector<Genotype> from the received data
+            int count;
+            MPI_Get_count(&status, MPI_BYTE, &count);
+            count /= sizeof(GenotypeData);
+            
+            std::vector<Genotype<double>> genotypes(count);
 
-        //     std::vector<Genotype<double>> genotypes(count);
-
-        //     for (int i = 0; i < genotypes.size(); i++) {
-        //         genotypes[i].fitness = data->fitness;
-        //         genotypes[i].relative_fitness = data->relative_fitness;
-        //         genotypes[i].cumulative_fitness = data->cumulative_fitness;
-        //         genotypes[i].genes.resize(parameterCount);
-        //         memcpy(genotypes[i].genes.data(), data->genes, sizeof(double) * parameterCount);
-        //     }
-            //population->ReplaceWorstGenotypes(genotypes);
-        //}
+            for (int i = 0; i < genotypes.size(); i++) {
+                genotypes[i].fitness = data->fitness;
+                genotypes[i].relative_fitness = data->relative_fitness;
+                genotypes[i].cumulative_fitness = data->cumulative_fitness;
+                genotypes[i].genes.resize(parameterCount);
+                memcpy(genotypes[i].genes.data(), data->genes, sizeof(double) * parameterCount);
+            }
+            population->ReplaceWorstGenotypes(genotypes);
+        }
     }
 
     // Print the result
