@@ -10,7 +10,7 @@
 #include <string>
 #include <algorithm>
 
-const int GENERATIONS_PER_RUN = 1000;
+const int GENERATIONS_PER_RUN = 5000;
 
 template <class T>
 class Population {
