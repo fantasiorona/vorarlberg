@@ -213,7 +213,7 @@ class Population {
         return current_best_genotype;
     }
 
-    void ReplaceWorstGenotypes(std::vector<Genotype<T>> replacementGenotypes, unsigned int amount) {
+    void ReplaceWorstGenotypes(std::vector<Genotype<T>> replacementGenotypes) {
         int minFitness = INT32_MAX;
         int minIndex = 0;
         sort(genotypes.begin(), genotypes.end(),
@@ -224,11 +224,11 @@ class Population {
         std::shuffle(replacementGenotypes.begin(), replacementGenotypes.end(),
                      mersenne_twister_engine);
 
-        for (int i = 0; i < amount; i++) {
+        for (int i = 0; i < genotypes.size() / 2; i++) {
             genotypes[i] = replacementGenotypes[i];
         }
 
-        std::cout << "switched " << amount << "populations" << std::endl;
+        std::cout << "switched " << genotypes.size() / 2 << "populations" << std::endl;
     }
 
     // Return a random double between 0.0 and 1.0

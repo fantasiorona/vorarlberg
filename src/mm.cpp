@@ -83,7 +83,7 @@ int main(int argc, char **argv) {
             // Crossover between the populations
             for (int j = 0; j < populationAmnt; j++) {
                 if (i != j) {
-                    populations[i]->ReplaceWorstGenotypes(populations[j]->getGenotypes(), 10);
+                    populations[i]->ReplaceWorstGenotypes(populations[j]->getGenotypes());
                 }
             }
         }
