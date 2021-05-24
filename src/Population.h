@@ -8,6 +8,7 @@
 #include <random>
 #include <set>
 #include <string>
+#include <algorithm>
 
 const int GENERATIONS_PER_RUN = 1000;
 
