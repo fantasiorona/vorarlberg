@@ -47,10 +47,6 @@ struct GenotypeData {
 };
 
 int main(int argc, char **argv) {
-    auto start = std::chrono::high_resolution_clock::now();
-    std::vector<double> lower_gene_bounds(parameterCount, -bound_extents);
-    std::vector<double> upper_gene_bounds(parameterCount, bound_extents);
-
     int procId, procAmnt, mpiError;
     MPI_Status status = {};
 
@@ -58,6 +54,10 @@ int main(int argc, char **argv) {
 
     MPI_Comm_size(MPI_COMM_WORLD, &procAmnt);
     MPI_Comm_rank(MPI_COMM_WORLD, &procId);
+    
+    auto start = std::chrono::high_resolution_clock::now();
+    std::vector<double> lower_gene_bounds(parameterCount, -bound_extents);
+    std::vector<double> upper_gene_bounds(parameterCount, bound_extents);
 
     int leftNbr = procId - 1;
     int rightNbr = procId + 1;
@@ -111,7 +111,7 @@ int main(int argc, char **argv) {
             int count;
             MPI_Get_count(&status, MPI_BYTE, &count);
             count /= sizeof(GenotypeData);
-            
+
             std::vector<Genotype<double>> genotypes(count);
 
             for (int i = 0; i < genotypes.size(); i++) {
